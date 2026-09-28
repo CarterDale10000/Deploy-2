@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Games Directory</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f7f7f7;
+            color: #222222;
+            padding: 20px;
+            line-height: 1.4;
+        }
+
+        .header-container {
+            max-width: 1200px;
+            margin: 0 auto 20px auto;
+            background: #ffffff;
+            border: 1px solid #cccccc;
+            padding: 15px 20px;
+            border-radius: 4px;
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            color: #111111;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        #searchInput {
+            flex: 1;
+            min-width: 200px;
+            padding: 8px 12px;
+            font-size: 14px;
+            border: 1px solid #bbbbbb;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        #searchInput:focus {
+            border-color: #555555;
+        }
+
+        #categorySelect {
+            padding: 8px 10px;
+            font-size: 14px;
+            border: 1px solid #bbbbbb;
+            border-radius: 3px;
+            background-color: #ffffff;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .game-count {
+            font-size: 13px;
+            color: #666666;
+            margin-left: auto;
+            white-space: nowrap;
+        }
+
+        #statusMessage {
+            max-width: 1200px;
+            margin: 0 auto 15px auto;
+            font-size: 13px;
+            color: #555555;
+            font-style: italic;
+        }
+
+        .games-grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 15px;
+        }
+
+        .game-card {
+            background-color: #ffffff;
+            border: 1px solid #cccccc;
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .game-card:hover {
+            border-color: #888888;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+        }
+
+        .card-image-wrapper {
+            width: 100%;
+            height: 120px;
+            background-color: #e0e0e0;
+            overflow: hidden;
+            position: relative;
+            border-bottom: 1px solid #eeeeee;
+        }
+
+        .game-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .card-body {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            justify-content: space-between;
+        }
+
+        .game-title {
+            font-size: 13px;
+            font-weight: bold;
+            color: #222222;
+            margin-bottom: 8px;
+            line-height: 1.3;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .play-btn {
+            background-color: #e9e9e9;
+            border: 1px solid #cccccc;
+            color: #333333;
+            padding: 6px 10px;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 3px;
+            text-align: center;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .game-card:hover .play-btn {
+            background-color: #333333;
+            color: #ffffff;
+            border-color: #333333;
+        }
+
+        .no-results {
+            grid-column: 1 / -1;
+            padding: 40px;
+            text-align: center;
+            background: #ffffff;
+            border: 1px solid #cccccc;
+            color: #666666;
+            font-size: 14px;
+        }
+
+        /* Modal Player Styling */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.75);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            padding: 15px;
+        }
+
+        .modal-content {
+            background-color: #ffffff;
+            width: 100%;
+            max-width: 1000px;
+            height: 90vh;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            border: 1px solid #444444;
+        }
+
+        .modal-header {
+            background-color: #f0f0f0;
+            padding: 10px 15px;
+            border-bottom: 1px solid #cccccc;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 15px;
+            font-weight: bold;
+            color: #222222;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .modal-btn {
+            padding: 4px 10px;
+            font-size: 12px;
+            background-color: #ffffff;
+            border: 1px solid #cccccc;
+            border-radius: 3px;
+            cursor: pointer;
+            color: #333333;
+        }
+
+        .modal-btn:hover {
+            background-color: #e5e5e5;
+        }
+
+        .modal-iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: #000000;
+        }
+    </style>
+</head>
+<body>
+
+    <header class="header-container">
+        <h1>Games Directory</h1>
+        <div class="controls">
+            <input type="text" id="searchInput" placeholder="Search by game name..." autocomplete="off">
+            <select id="categorySelect">
+                <option value="all">All Categories</option>
+                <option value="minecraft">Minecraft</option>
+                <option value="action">Action & Arcade</option>
+                <option value="classics">Classics & Retro</option>
+                <option value="sports">Sports & Racing</option>
+                <option value="puzzle">Puzzle & Casual</option>
+            </select>
+            <span class="game-count" id="gameCount">Loading...</span>
+        </div>
+    </header>
+
+    <div id="statusMessage">Syncing repository catalog...</div>
+
+    <main class="games-grid" id="gamesGrid"></main>
+
+    <div class="modal-overlay" id="gameModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title" id="modalTitle">Playing Game</span>
+                <div class="modal-actions">
+                    <button class="modal-btn" id="openTabBtn">Open Direct</button>
+                    <button class="modal-btn" id="fullscreenBtn">Fullscreen</button>
+                    <button class="modal-btn" id="closeModalBtn">Close</button>
+                </div>
+            </div>
+            <iframe id="gameIframe" class="modal-iframe" src="about:blank" allowfullscreen="true"></iframe>
+        </div>
+    </div>
+
+    <script>
+        // Comprehensive fallback list of filenames in case API rate-limits apply
+        const FALLBACK_FILENAMES = [
+            "1.3.html", "1.5.2.html", "1.8.html", "1.12.2.html", "sm64.html", "fnaf.html", "fnaf2.html", "fnaf3.html", "fnaf4.html",
+            "fnf.html", "ctr.html", "bttf.html", "pge.html", "pge3.html", "doodle.html", "subway.html", "geometry.html", "cluster.html",
+            "drift.html", "bitlife.html", "baldi.html", "happywheels.html", "crossy.html", "flappy.html", "temple.html", "retro-bowl.html",
+            "basketbros.html", "watergirl.html", "ducklife.html", "ducklife2.html", "ducklife3.html", "ducklife4.html", "vex3.html",
+            "vex4.html", "vex5.html", "vex6.html", "vex7.html", "townscaper.html", "worldbox.html", "paperio.html", "paperio2.html",
+            "chrome-dino.html", "impossible-quiz.html", "riddle-school.html", "badicecream.html", "2048.html", "slope.html", "pacman.html",
+            "tetris.html", "doom.html", "1v1-lol.html", "tunnel-rush.html", "run3.html", "moto-x3m.html", "cookie-clicker.html", "space-invaders.html",
+            "pong.html", "snake.html", "breakout.html", "asteroids.html", "flappy-bird.html", "doodle-jump.html", "temple-run-2.html",
+            "subway-surfers.html", "geometry-dash.html", "clustertruck.html", "drift-hunters.html", "happy-wheels.html", "crossy-road.html",
+            "paperminecraft.html", "cut-the-rope.html", "plants-vs-zombies.html", "angry-birds.html", "geometry-dash-lite.html", "sonic.html",
+            "mario.html", "mario-kart.html", "zelda.html", "donkey-kong.html", "galaga.html", "frogger.html", "dig-dug.html", "paper-mario.html",
+            "pokemon.html", "fireboy-and-watergirl.html", "vex.html", "ducklife-space.html", "stickman-hook.html", "drive-mad.html",
+            "eggy-car.html", "rooftop-snipers.html", "getaway-shootout.html", "tubepopper.html", "raft-wars.html", "fancy-pants.html",
+            "bloons-td.html", "bloons-td-4.html", "bloons-td-5.html", "age-of-war.html", "swords-and-sandals.html", "jacksmith.html",
+            "papas-pizzeria.html", "papas-burgeria.html", "papas-freezeria.html", "papas-bakeria.html", "geometry-dash-meltdown.html"
+        ];
+
+        function decodeGameTitle(filename) {
+            let clean = filename.replace(/\.html?$/i, '').trim();
+            let lower = clean.toLowerCase();
+
+            // 1. Version numbers map to Minecraft versions
+            if (/^\d+(\.\d+)*$/.test(clean)) {
+                return `Minecraft v${clean}`;
+            }
+
+            // 2. Specific abbreviation dictionary
+            const dict = {
+                'sm64': 'Super Mario 64',
+                'fnaf': 'Five Nights at Freddy\'s',
+                'fnaf2': 'Five Nights at Freddy\'s 2',
+                'fnaf3': 'Five Nights at Freddy\'s 3',
+                'fnaf4': 'Five Nights at Freddy\'s 4',
+                'fnf': 'Friday Night Funkin\'',
+                'ctr': 'Crash Team Racing',
+                'bttf': 'Back to the Future',
+                'pge': 'Paper Minecraft',
+                'pge3': 'Paper Minecraft v3',
+                'paperminecraft': 'Paper Minecraft',
+                'doodle': 'Doodle Jump',
+                'doodle-jump': 'Doodle Jump',
+                'subway': 'Subway Surfers',
+                'subway-surfers': 'Subway Surfers',
+                'geometry': 'Geometry Dash',
+                'geometry-dash': 'Geometry Dash',
+                'cluster': 'Cluster Truck',
+                'clustertruck': 'Cluster Truck',
+                'drift': 'Drift Hunters',
+                'drift-hunters': 'Drift Hunters',
+                'bitlife': 'BitLife',
+                'baldi': 'Baldi\'s Basics',
+                'happywheels': 'Happy Wheels',
+                'happy-wheels': 'Happy Wheels',
+                'crossy': 'Crossy Road',
+                'crossy-road': 'Crossy Road',
+                'flappy': 'Flappy Bird',
+                'flappy-bird': 'Flappy Bird',
+                'temple': 'Temple Run 2',
+                'temple-run-2': 'Temple Run 2',
+                'retro-bowl': 'Retro Bowl',
+                'basketbros': 'Basket Bros',
+                'watergirl': 'Fireboy & Watergirl',
+                'fireboy-and-watergirl': 'Fireboy & Watergirl',
+                'ducklife': 'Duck Life',
+                'ducklife2': 'Duck Life 2',
+                'ducklife3': 'Duck Life 3',
+                'ducklife4': 'Duck Life 4',
+                'vex3': 'Vex 3',
+                'vex4': 'Vex 4',
+                'vex5': 'Vex 5',
+                'vex6': 'Vex 6',
+                'vex7': 'Vex 7',
+                'townscaper': 'Townscaper',
+                'worldbox': 'WorldBox',
+                'paperio': 'Paper.io',
+                'paperio2': 'Paper.io 2',
+                'chrome-dino': 'Chrome Dino',
+                'dino': 'Chrome Dino',
+                'impossible-quiz': 'The Impossible Quiz',
+                'riddle-school': 'Riddle School',
+                'badicecream': 'Bad Ice-Cream',
+                '2048': '2048',
+                'slope': 'Slope',
+                'pacman': 'Pac-Man',
+                'tetris': 'Tetris',
+                'doom': 'Doom',
+                '1v1-lol': '1v1.LOL',
+                'tunnel-rush': 'Tunnel Rush',
+                'run3': 'Run 3',
+                'moto-x3m': 'Moto X3M',
+                'cookie-clicker': 'Cookie Clicker',
+                'space-invaders': 'Space Invaders'
+            };
+
+            if (dict[lower]) {
+                return dict[lower];
+            }
+
+            // Regex matchers for series numbers
+            if (/^fnaf(\d+)$/i.test(lower)) return `Five Nights at Freddy's ${lower.replace('fnaf', '')}`;
+            if (/^ducklife(\d+)$/i.test(lower)) return `Duck Life ${lower.replace('ducklife', '')}`;
+            if (/^vex(\d+)$/i.test(lower)) return `Vex ${lower.replace('vex', '')}`;
+
+            // Standard formatting fallback
+            return clean
+                .replace(/[-_]/g, ' ')
+                .replace(/\b\w/g, c => c.toUpperCase());
+        }
+
+        const CURATED_IMAGES = {
+            'Minecraft': 'https://images.unsplash.com/photo-1627856013091-fed6e4e30025?w=350&q=80',
+            'Super Mario 64': 'https://images.unsplash.com/photo-1612404730960-5c71577fca11?w=350&q=80',
+            'Five Nights at Freddy\'s': 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=350&q=80',
+            'Subway Surfers': 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=350&q=80',
+            'Geometry Dash': 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=350&q=80',
+            'Pac-Man': 'https://images.unsplash.com/photo-1579373903781-fd5c0c30c4cd?w=350&q=80',
+            'Tetris': 'https://images.unsplash.com/photo-1606168095226-88e89fbc4170?w=350&q=80',
+            'Doom': 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=350&q=80',
+            '2048': 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=350&q=80',
+            'Cookie Clicker': 'https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=350&q=80'
+        };
+
+        function getGameImageUrl(title) {
+            // Check curated exact or prefix matches
+            for (let key in CURATED_IMAGES) {
+                if (title.toLowerCase().includes(key.toLowerCase())) {
+                    return CURATED_IMAGES[key];
+                }
+            }
+            // Dynamic Bing Thumbnail API lookup
+            const query = encodeURIComponent(title + ' game icon');
+            return `https://tse2.mm.bing.net/th?q=${query}&w=280&h=180&c=7`;
+        }
+
+        function createFallbackSvg(title) {
+            const cleanTitle = title.replace(/[<>&'"]/g, '');
+            return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="280" height="180" viewBox="0 0 280 180"><rect width="100%" height="100%" fill="%23e8e8e8"/><rect x="8" y="8" width="264" height="164" fill="%23ffffff" rx="3" stroke="%23cccccc"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="%23444444">${cleanTitle}</text></svg>`;
+        }
+
+        let allGames = [];
+        const gamesGrid = document.getElementById('gamesGrid');
+        const searchInput = document.getElementById('searchInput');
+        const categorySelect = document.getElementById('categorySelect');
+        const gameCount = document.getElementById('gameCount');
+        const statusMessage = document.getElementById('statusMessage');
+
+        async function fetchGameCatalog() {
+            let files = [];
+            
+            try {
+                // Try fetching directly from GitHub API tree
+                let response = await fetch('https://api.github.com/repos/CoolDude2349/Offline-HTML-Games-Pack/git/trees/master?recursive=1');
+                if (!response.ok) {
+                    response = await fetch('https://api.github.com/repos/CoolDude2349/Offline-HTML-Games-Pack/git/trees/main?recursive=1');
+                }
+
+                if (response.ok) {
+                    const data = await response.json();
+                    files = data.tree
+                        .filter(item => item.type === 'blob')
+                        .map(item => item.path);
+                    statusMessage.textContent = 'Catalog synced live from repository.';
+                } else {
+                    throw new Error('API Rate Limited or Unreachable');
+                }
+            } catch (e) {
+                console.warn('Falling back to built-in offline game list:', e);
+                files = FALLBACK_FILENAMES.map(name => `offline/${name}`);
+                statusMessage.textContent = 'Offline fallback catalog loaded.';
+            }
+
+            // Filter strictly for HTML files within offline/ and filter out non-game files
+            const validGames = files.filter(path => {
+                const lower = path.toLowerCase();
+                if (!lower.endsWith('.html') && !lower.endsWith('.htm')) return false;
+                // Exclude meta files, tool files, and documentation
+                if (lower.includes('file-input') || 
+                    lower.includes('single-file') || 
+                    lower.includes('inline-tools') ||
+                    lower.includes('epicviewer') ||
+                    lower.includes('readme')) return false;
+                return true;
+            });
+
+            // Parse into structured game objects
+            allGames = validGames.map(path => {
+                const filename = path.split('/').pop();
+                const title = decodeGameTitle(filename);
+                return {
+                    filename: filename,
+                    path: path.startsWith('offline/') ? path : `offline/${filename}`,
+                    title: title,
+                    image: getGameImageUrl(title)
+                };
+            });
+
+            // Deduplicate games by filename
+            const seen = new Set();
+            allGames = allGames.filter(g => {
+                if (seen.has(g.filename)) return false;
+                seen.add(g.filename);
+                return true;
+            });
+
+            // Sort alphabetically
+            allGames.sort((a, b) => a.title.localeCompare(b.title));
+
+            renderGames(allGames);
+        }
+
+        function renderGames(games) {
+            gamesGrid.innerHTML = '';
+            gameCount.textContent = `${games.length} games available`;
+
+            if (games.length === 0) {
+                gamesGrid.innerHTML = '<div class="no-results">No games match your search criteria.</div>';
+                return;
+            }
+
+            games.forEach(game => {
+                const card = document.createElement('div');
+                card.className = 'game-card';
+                card.setAttribute('role', 'button');
+                
+                const imgWrapper = document.createElement('div');
+                imgWrapper.className = 'card-image-wrapper';
+
+                const img = document.createElement('img');
+                img.className = 'game-image';
+                img.src = game.image;
+                img.alt = game.title;
+                img.loading = 'lazy';
+                img.onerror = function() {
+                    this.onerror = null;
+                    this.src = createFallbackSvg(game.title);
+                };
+
+                imgWrapper.appendChild(img);
+
+                const body = document.createElement('div');
+                body.className = 'card-body';
+
+                const title = document.createElement('div');
+                title.className = 'game-title';
+                title.textContent = game.title;
+                title.title = game.title;
+
+                const playBtn = document.createElement('button');
+                playBtn.className = 'play-btn';
+                playBtn.textContent = 'Play Game';
+
+                body.appendChild(title);
+                body.appendChild(playBtn);
+
+                card.appendChild(imgWrapper);
+                card.appendChild(body);
+
+                // Open Game on Card Click
+                card.addEventListener('click', () => {
+                    openGameModal(game);
+                });
+
+                gamesGrid.appendChild(card);
+            });
+        }
+
+        function filterGames() {
+            const query = searchInput.value.toLowerCase().trim();
+            const category = categorySelect.value;
+
+            const filtered = allGames.filter(game => {
+                const matchesSearch = game.title.toLowerCase().includes(query) || game.filename.toLowerCase().includes(query);
+                
+                if (!matchesSearch) return false;
+
+                if (category === 'all') return true;
+                const titleLower = game.title.toLowerCase();
+
+                if (category === 'minecraft') {
+                    return titleLower.includes('minecraft');
+                }
+                if (category === 'action') {
+                    return titleLower.includes('fnaf') || titleLower.includes('doom') || titleLower.includes('slope') || titleLower.includes('1v1') || titleLower.includes('tunnel') || titleLower.includes('run') || titleLower.includes('subway');
+                }
+                if (category === 'classics') {
+                    return titleLower.includes('mario') || titleLower.includes('pac-man') || titleLower.includes('tetris') || titleLower.includes('pong') || titleLower.includes('snake') || titleLower.includes('space invaders');
+                }
+                if (category === 'sports') {
+                    return titleLower.includes('retro bowl') || titleLower.includes('basket') || titleLower.includes('moto') || titleLower.includes('drift') || titleLower.includes('racing');
+                }
+                if (category === 'puzzle') {
+                    return titleLower.includes('2048') || titleLower.includes('quiz') || titleLower.includes('doodle') || titleLower.includes('paper') || titleLower.includes('duck');
+                }
+
+                return true;
+            });
+
+            renderGames(filtered);
+        }
+
+        searchInput.addEventListener('input', filterGames);
+        categorySelect.addEventListener('change', filterGames);
+
+        const modal = document.getElementById('gameModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const gameIframe = document.getElementById('gameIframe');
+        const closeModalBtn = document.getElementById('closeModalBtn');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const openTabBtn = document.getElementById('openTabBtn');
+
+        let currentGamePath = '';
+
+        function openGameModal(game) {
+            currentGamePath = game.path;
+            modalTitle.textContent = game.title;
+            gameIframe.src = game.path;
+            modal.style.display = 'flex';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            gameIframe.src = 'about:blank';
+        }
+
+        closeModalBtn.addEventListener('click', closeModal);
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        openTabBtn.addEventListener('click', () => {
+            if (currentGamePath) {
+                window.open(currentGamePath, '_blank');
+            }
+        });
+
+        fullscreenBtn.addEventListener('click', () => {
+            if (gameIframe.requestFullscreen) {
+                gameIframe.requestFullscreen();
+            } else if (gameIframe.webkitRequestFullscreen) {
+                gameIframe.webkitRequestFullscreen();
+            } else if (gameIframe.msRequestFullscreen) {
+                gameIframe.msRequestFullscreen();
+            }
+        });
+
+        // Initialize on page load
+        window.onload = fetchGameCatalog;
+    </script>
+</body>
+</html>
