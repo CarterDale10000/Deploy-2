@@ -12,315 +12,419 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
-            background-color: #f4f4f4;
-            color: #222222;
-            padding: 20px;
-            line-height: 1.4;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f8f9fa;
+            color: #212529;
+            line-height: 1.5;
+            padding: 24px 16px;
         }
 
-        .header-container {
-            max-width: 1200px;
-            margin: 0 auto 20px auto;
-            background: #ffffff;
-            border: 1px solid #cccccc;
-            padding: 15px 20px;
-            border-radius: 4px;
-        }
-
-        h1 {
-            font-size: 22px;
-            font-weight: bold;
-            margin-bottom: 12px;
-            color: #111111;
-        }
-
-        .controls {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        #searchInput {
-            flex: 1;
-            min-width: 250px;
-            padding: 10px 14px;
-            font-size: 15px;
-            border: 1px solid #bbbbbb;
-            border-radius: 3px;
-            outline: none;
-            background-color: #ffffff;
-        }
-
-        #searchInput:focus {
-            border-color: #444444;
-        }
-
-        .game-count {
-            font-size: 14px;
-            color: #555555;
-            white-space: nowrap;
-            font-weight: 500;
-        }
-
-        .games-grid {
+        .container {
             max-width: 1200px;
             margin: 0 auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-            gap: 10px;
         }
 
-        .game-link {
-            display: block;
+        /* Search & Filter Header Control */
+        .controls {
             background-color: #ffffff;
-            border: 1px solid #cccccc;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .search-box {
+            margin-bottom: 14px;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 15px;
+            border: 1px solid #ced4da;
             border-radius: 4px;
-            padding: 12px 14px;
+            background-color: #ffffff;
+            color: #212529;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: #4dabf7;
+            box-shadow: 0 0 0 3px rgba(77, 171, 247, 0.25);
+        }
+
+        .category-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .category-btn {
+            background-color: #e9ecef;
+            border: 1px solid #dee2e6;
+            color: #495057;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+        }
+
+        .category-btn:hover {
+            background-color: #dee2e6;
+        }
+
+        .category-btn.active {
+            background-color: #3b82f6;
+            border-color: #2563eb;
+            color: #ffffff;
+        }
+
+        .stats-text {
+            margin-left: auto;
+            font-size: 13px;
+            color: #6c757d;
+        }
+
+        /* Grid Layout */
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+            gap: 12px;
+        }
+
+        .game-card {
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 14px 16px;
             text-decoration: none;
-            color: #111111;
+            color: #212529;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 80px;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .game-card:hover {
+            border-color: #3b82f6;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        .game-title {
             font-size: 14px;
-            font-weight: bold;
+            font-weight: 600;
+            color: #1d4ed8;
+            margin-bottom: 6px;
             word-break: break-word;
-            transition: background-color 0.1s ease, border-color 0.1s ease;
         }
 
-        .game-link:hover {
-            background-color: #eef2f7;
-            border-color: #888888;
-            color: #000000;
+        .game-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 4px;
         }
 
-        .no-results {
+        .game-path {
+            font-family: monospace;
+            background-color: #f1f3f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            color: #495057;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 140px;
+        }
+
+        .empty-message {
             grid-column: 1 / -1;
-            padding: 30px;
+            padding: 40px;
             text-align: center;
-            background: #ffffff;
-            border: 1px solid #cccccc;
-            color: #666666;
+            color: #6c757d;
+            background-color: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
             font-size: 14px;
-            border-radius: 4px;
+        }
+
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
 <body>
 
-    <header class="header-container">
-        <h1>Games Directory</h1>
+    <div class="container">
         <div class="controls">
-            <input type="text" id="searchInput" placeholder="Search games by name..." autocomplete="off">
-            <span class="game-count" id="gameCount">Loading games...</span>
+            <div class="search-box">
+                <input type="text" id="searchInput" class="search-input" placeholder="Search games by title or filename..." autocomplete="off">
+            </div>
+            <div class="category-bar">
+                <button class="category-btn active" data-category="all">All Games</button>
+                <button class="category-btn" data-category="recent">Recently Played</button>
+                <button class="category-btn" data-category="minecraft">Minecraft & Sandbox</button>
+                <button class="category-btn" data-category="action">Action & Arcade</button>
+                <button class="category-btn" data-category="puzzle">Puzzle & Strategy</button>
+                <button class="category-btn" data-category="casual">Casual & Sports</button>
+                <span class="stats-text" id="statsDisplay">Loading...</span>
+            </div>
         </div>
-    </header>
 
-    <main class="games-grid" id="gamesGrid"></main>
+        <main class="games-grid" id="gamesGrid"></main>
+    </div>
 
     <script>
-        // Comprehensive pre-computed dataset of 250+ offline HTML games
-        const GAME_FILENAMES = [
-            "1.3.html", "1.5.2.html", "1.8.html", "1.8.8.html", "1.12.2.html", "eaglercraft.html", "paper-minecraft.html", "mc.html",
-            "sm64.html", "fnaf.html", "fnaf2.html", "fnaf3.html", "fnaf4.html", "fnaf-sl.html", "fnf.html", "fnf-weeks.html",
-            "ctr.html", "cb.html", "mk64.html", "bttf.html", "pge.html", "pge3.html", "doodle.html", "doodle-jump.html",
-            "subway.html", "subway-surfers.html", "geometry.html", "geometry-dash.html", "geometry-dash-lite.html", "geometry-dash-meltdown.html",
-            "cluster.html", "clustertruck.html", "drift.html", "drift-hunters.html", "bitlife.html", "baldi.html", "baldis-basics.html",
-            "happywheels.html", "happy-wheels.html", "crossy.html", "crossy-road.html", "flappy.html", "flappy-bird.html",
-            "temple.html", "temple-run-2.html", "retro-bowl.html", "basketbros.html", "basket-bros.html", "watergirl.html",
-            "fireboy-and-watergirl.html", "fireboy-and-watergirl-2.html", "fireboy-and-watergirl-3.html", "fireboy-and-watergirl-4.html",
-            "ducklife.html", "ducklife2.html", "ducklife3.html", "ducklife4.html", "ducklife-space.html",
-            "vex.html", "vex3.html", "vex4.html", "vex5.html", "vex6.html", "vex7.html", "townscaper.html", "worldbox.html",
-            "paperio.html", "paperio2.html", "paper-io-2.html", "slitherio.html", "agar-io.html", "hole-io.html", "diep-io.html",
-            "chrome-dino.html", "dino.html", "impossible-quiz.html", "riddle-school.html", "riddle-school-2.html", "riddle-school-3.html",
-            "riddle-school-4.html", "riddle-school-5.html", "riddle-transfer.html", "badicecream.html", "bad-ice-cream.html",
-            "bad-ice-cream-2.html", "bad-ice-cream-3.html", "2048.html", "slope.html", "pacman.html", "tetris.html", "doom.html",
-            "1v1-lol.html", "tunnel-rush.html", "run3.html", "moto-x3m.html", "moto-x3m-2.html", "moto-x3m-pool-party.html",
-            "moto-x3m-spooky-land.html", "cookie-clicker.html", "doge-miner.html", "doge-miner-2.html", "space-invaders.html",
-            "pong.html", "snake.html", "breakout.html", "asteroids.html", "galaga.html", "frogger.html", "dig-dug.html",
-            "cut-the-rope.html", "plants-vs-zombies.html", "pvz.html", "angry-birds.html", "sonic.html", "mario.html", "mario-kart.html",
-            "zelda.html", "donkey-kong.html", "paper-mario.html", "pokemon.html", "stickman-hook.html", "stick-merge.html",
-            "drive-mad.html", "eggy-car.html", "madalin-stunt-cars-2.html", "rooftop-snipers.html", "getaway-shootout.html",
-            "tubepopper.html", "raft-wars.html", "raft-wars-2.html", "fancy-pants.html", "bloons-td.html", "bloons-td-4.html",
-            "bloons-td-5.html", "bloons-td-6.html", "kingdom-rush.html", "age-of-war.html", "swords-and-sandals.html", "jacksmith.html",
-            "papas-pizzeria.html", "papas-burgeria.html", "papas-freezeria.html", "papas-bakeria.html", "papas-scooperia.html",
-            "papas-taco-mia.html", "papas-pancakeria.html", "alien-hominid.html", "super-smash-flash-2.html", "smash.html",
-            "a-dark-room.html", "achievement-unlocked.html", "apple-shooter.html", "aquapark-io.html", "archery-world-tour.html",
-            "awesome-tanks.html", "awesome-tanks-2.html", "backrooms.html", "basketball-stars.html", "boxel-rebound.html",
-            "brain-test.html", "build-now-gg.html", "bullet-force.html", "burrito-bison.html", "cannon-basketball.html",
-            "cat-ninja.html", "cell-to-singularity.html", "charlie-the-duck.html", "chess.html", "city-car-driving.html",
-            "commando.html", "creative-kill-chamber.html", "crossy-road-2.html", "cubefield.html", "cursor-10.html",
-            "drift-boss.html", "doodle-god.html", "earn-to-die.html", "earn-to-die-2.html", "electric-man-2.html",
-            "escalator-safety.html", "evo-world-io.html", "feudalism.html", "fireboy-watergirl-forest-temple.html",
-            "flex-box.html", "flight.html", "free-gear.html", "gun-mayhem.html", "gun-mayhem-2.html", "hanger.html",
-            "hanger-2.html", "heads-upper.html", "hextris.html", "house-of-hazards.html", "idle-dice.html", "idle-breakout.html",
-            "interstate-76.html", "iron-snout.html", "jelly-truck.html", "jumping-shell.html", "knights-of-the-card-table.html",
-            "learn-to-fly.html", "learn-to-fly-2.html", "learn-to-fly-3.html", "legend-of-zelda.html", "line-rider.html",
-            "little-alchemy.html", "little-alchemy-2.html", "make-it-rain.html", "mine-clone.html", "miner-dash.html",
-            "monster-tracks.html", "motherload.html", "n-gon.html", "ninja.html", "nut-rush.html", "om-nom-run.html",
-            "one-button-bob.html", "ovo.html", "pac-man-3d.html", "parkour-race.html", "penalty-kick-online.html",
-            "pickle-rick.html", "pirate-kiss.html", "pixwars.html", "plasma-burst.html", "plasma-burst-2.html",
-            "polytrack.html", "red-ball.html", "red-ball-4.html", "retro-ping-pong.html", "road-fury.html", "rooftop-snipers-2.html",
-            "run-2.html", "sandbox.html", "satanic-panic.html", "short-life.html", "smash-karts.html", "snail-bob.html",
-            "snail-bob-2.html", "soccer-skills.html", "space-company.html", "spelunky.html", "stack.html", "stickman-boost.html",
-            "strike-force-heroes.html", "subway-surfers-ny.html", "super-mario-bros.html", "surviv-io.html", "tactical-assassins.html",
-            "tank-trouble.html", "time-shooter.html", "time-shooter-2.html", "time-shooter-3.html", "toilet-rush.html",
-            "vex-8.html", "we-become-what-we-behold.html", "who-is-impostor.html", "world-hardest-game.html", "world-hardest-game-2.html",
-            "zombocalypse.html", "zombotron.html", "zombotron-2.html"
-        ];
+        // Set up client-side Cookie Management
+        function setCookie(name, value, days = 365) {
+            const expires = new Date(Date.now() + days * 864e5).toUTCString();
+            document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Lax`;
+        }
+
+        function getCookie(name) {
+            return document.cookie.split('; ').reduce((r, v) => {
+                const parts = v.split('=');
+                return parts[0] === name ? decodeURIComponent(parts[1]) : r;
+            }, '');
+        }
+
+        function getRecentlyPlayed() {
+            const raw = getCookie('recent_games');
+            if (!raw) return [];
+            try {
+                return JSON.parse(raw);
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function recordGamePlay(filename) {
+            let recent = getRecentlyPlayed();
+            recent = recent.filter(item => item !== filename);
+            recent.unshift(filename);
+            if (recent.length > 50) recent = recent.slice(0, 50); // Keep last 50
+            setCookie('recent_games', JSON.stringify(recent));
+        }
 
         function decodeGameTitle(filename) {
-            let clean = filename.replace(/\.html?$/i, '').trim();
-            let lower = clean.toLowerCase();
+            let name = filename.replace(/\.html?$/i, '').trim();
+            let lower = name.toLowerCase();
 
-            // 1. Convert Minecraft numerical versions (e.g., 1.3, 1.5.2, 1.8.8)
-            if (/^\d+(\.\d+)*$/.test(clean)) {
-                return `Minecraft ${clean}`;
+            // Minecraft Version Matching logic (e.g., 1.3, 1.5.2, b1.7.3, a1.2.6)
+            if (/^(a|b)?\d+(\.\d+)+$/i.test(name)) {
+                if (lower.startsWith('b')) return `Minecraft Beta ${name.substring(1)}`;
+                if (lower.startsWith('a')) return `Minecraft Alpha ${name.substring(1)}`;
+                return `Minecraft ${name}`;
             }
 
-            // 2. Exact abbreviation lookups
-            const dict = {
-                'mc': 'Minecraft',
+            // Direct shortcut dictionary mapping
+            const shortcuts = {
+                'mc': 'Minecraft Classic',
                 'sm64': 'Super Mario 64',
+                'mk64': 'Mario Kart 64',
                 'fnaf': 'Five Nights at Freddy\'s',
                 'fnaf2': 'Five Nights at Freddy\'s 2',
                 'fnaf3': 'Five Nights at Freddy\'s 3',
                 'fnaf4': 'Five Nights at Freddy\'s 4',
                 'fnaf-sl': 'Five Nights at Freddy\'s: Sister Location',
+                'fnaf-world': 'Five Nights at Freddy\'s World',
                 'fnf': 'Friday Night Funkin\'',
-                'fnf-weeks': 'Friday Night Funkin\' (Full Weeks)',
+                'pvz': 'Plants vs. Zombies',
                 'ctr': 'Crash Team Racing',
                 'cb': 'Crash Bandicoot',
-                'mk64': 'Mario Kart 64',
-                'bttf': 'Back to the Future',
                 'pge': 'Paper Minecraft',
-                'pge3': 'Paper Minecraft v3',
-                'paperminecraft': 'Paper Minecraft',
-                'doodle': 'Doodle Jump',
-                'doodle-jump': 'Doodle Jump',
-                'subway': 'Subway Surfers',
-                'subway-surfers': 'Subway Surfers',
-                'geometry': 'Geometry Dash',
-                'geometry-dash': 'Geometry Dash',
-                'cluster': 'Cluster Truck',
-                'clustertruck': 'Cluster Truck',
-                'drift': 'Drift Hunters',
-                'drift-hunters': 'Drift Hunters',
-                'bitlife': 'BitLife',
-                'baldi': 'Baldi\'s Basics',
-                'baldis-basics': 'Baldi\'s Basics',
-                'happywheels': 'Happy Wheels',
-                'happy-wheels': 'Happy Wheels',
-                'crossy': 'Crossy Road',
-                'crossy-road': 'Crossy Road',
-                'flappy': 'Flappy Bird',
-                'flappy-bird': 'Flappy Bird',
-                'temple': 'Temple Run 2',
-                'temple-run-2': 'Temple Run 2',
-                'retro-bowl': 'Retro Bowl',
-                'basketbros': 'Basket Bros',
-                'basket-bros': 'Basket Bros',
-                'watergirl': 'Fireboy & Watergirl',
-                'fireboy-and-watergirl': 'Fireboy & Watergirl',
-                'ducklife': 'Duck Life',
-                'ducklife2': 'Duck Life 2',
-                'ducklife3': 'Duck Life 3',
-                'ducklife4': 'Duck Life 4',
-                'vex3': 'Vex 3',
-                'vex4': 'Vex 4',
-                'vex5': 'Vex 5',
-                'vex6': 'Vex 6',
-                'vex7': 'Vex 7',
-                'townscaper': 'Townscaper',
-                'worldbox': 'WorldBox',
-                'paperio': 'Paper.io',
-                'paperio2': 'Paper.io 2',
-                'paper-io-2': 'Paper.io 2',
-                'chrome-dino': 'Chrome Dino',
-                'dino': 'Chrome Dino',
-                'impossible-quiz': 'The Impossible Quiz',
-                'riddle-school': 'Riddle School',
-                'badicecream': 'Bad Ice-Cream',
-                'bad-ice-cream': 'Bad Ice-Cream',
-                '2048': '2048',
-                'slope': 'Slope',
-                'pacman': 'Pac-Man',
-                'tetris': 'Tetris',
-                'doom': 'Doom',
-                '1v1-lol': '1v1.LOL',
-                'tunnel-rush': 'Tunnel Rush',
-                'run3': 'Run 3',
-                'moto-x3m': 'Moto X3M',
-                'cookie-clicker': 'Cookie Clicker',
-                'space-invaders': 'Space Invaders',
-                'pvz': 'Plants vs. Zombies',
-                'smash': 'Super Smash Flash 2'
+                'bttf': 'Back to the Future',
+                'whg': 'World\'s Hardest Game',
+                'whg2': 'World\'s Hardest Game 2'
             };
 
-            if (dict[lower]) {
-                return dict[lower];
+            if (shortcuts[lower]) return shortcuts[lower];
+
+            // Specific regex pattern for fnaf numbering
+            if (/^fnaf(\d+)$/i.test(lower)) {
+                return `Five Nights at Freddy's ${lower.replace('fnaf', '')}`;
             }
 
-            // 3. Match series patterns with numbers
-            if (/^fnaf(\d+)$/i.test(lower)) return `Five Nights at Freddy's ${lower.replace('fnaf', '')}`;
-            if (/^ducklife(\d+)$/i.test(lower)) return `Duck Life ${lower.replace('ducklife', '')}`;
-            if (/^vex(\d+)$/i.test(lower)) return `Vex ${lower.replace('vex', '')}`;
-            if (/^riddle-school-(\d+)$/i.test(lower)) return `Riddle School ${clean.split('-').pop()}`;
-            if (/^bad-ice-cream-(\d+)$/i.test(lower)) return `Bad Ice-Cream ${clean.split('-').pop()}`;
-
-            // 4. Default formatting: hyphens/underscores to spaces and capitalize words
-            return clean
-                .replace(/[-_]/g, ' ')
+            // Standard string cleanup: hyphens and underscores to spaces, capitalized
+            return name
+                .replace(/[-_]+/g, ' ')
                 .replace(/\b\w/g, char => char.toUpperCase());
         }
 
-        let allGames = [];
+        function assignCategory(filename, title) {
+            const str = (filename + ' ' + title).toLowerCase();
 
-        // Deduplicate and map raw filenames to game objects
-        const uniqueFilenames = Array.from(new Set(GAME_FILENAMES));
-        allGames = uniqueFilenames.map(filename => ({
-            filename: filename,
-            title: decodeGameTitle(filename),
-            url: `offline/${filename}`
-        }));
+            if (str.includes('minecraft') || str.includes('eagler') || /^(a|b)?\d+(\.\d+)+$/.test(filename.replace(/\.html?$/i, '')) || str.includes('sandbox') || str.includes('craft') || str.includes('terraria') || str.includes('roblox')) {
+                return 'minecraft';
+            }
+            if (str.includes('fnaf') || str.includes('freddy') || str.includes('mario') || str.includes('pacman') || str.includes('tetris') || str.includes('sonic') || str.includes('shooter') || str.includes('vex') || str.includes('run') || str.includes('slope') || str.includes('sm64') || str.includes('action') || str.includes('combat') || str.includes('doom') || str.includes('strike')) {
+                return 'action';
+            }
+            if (str.includes('2048') || str.includes('chess') || str.includes('puzzle') || str.includes('quiz') || str.includes('hardest') || str.includes('cut-the-rope') || str.includes('rope') || str.includes('watergirl') || str.includes('fireboy') || str.includes('logic') || str.includes('sudoku')) {
+                return 'puzzle';
+            }
+            return 'casual';
+        }
 
-        // Sort games alphabetically by title
-        allGames.sort((a, b) => a.title.localeCompare(b.title));
+        const rawFilenames = [
+            // Minecraft & Eaglercraft Versions
+            "1.3.html", "1.5.2.html", "1.8.8.html", "b1.7.3.html", "a1.2.6.html", "1.7.10.html", "1.6.4.html", "1.2.5.html", "1.12.2.html", "eaglercraft.html", "paper-minecraft.html", "pge.html",
+            // FNAF Series
+            "fnaf.html", "fnaf2.html", "fnaf3.html", "fnaf4.html", "fnaf-sl.html", "fnaf-world.html",
+            // Vex Series
+            "vex.html", "vex2.html", "vex3.html", "vex4.html", "vex5.html", "vex6.html", "vex7.html",
+            // Papa's Games Series
+            "papas-pizzeria.html", "papas-burgeria.html", "papas-freezeria.html", "papas-bakeria.html", "papas-sushiria.html", "papas-taco-mia.html", "papas-donuteria.html", "papas-scooperia.html", "papas-pancakeria.html", "papas-wingeria.html", "papas-pastaria.html", "papas-cheeserias.html",
+            // Run & Moto X3M Series
+            "run.html", "run2.html", "run3.html", "moto-x3m.html", "moto-x3m-2.html", "moto-x3m-3.html", "moto-x3m-spooky.html", "moto-x3m-winter.html",
+            // Duck Life Series
+            "duck-life.html", "duck-life-2.html", "duck-life-3.html", "duck-life-4.html", "duck-life-space.html",
+            // Fireboy & Watergirl
+            "fireboy-and-watergirl.html", "fireboy-and-watergirl-2.html", "fireboy-and-watergirl-3.html", "fireboy-and-watergirl-4.html", "fireboy-and-watergirl-5.html",
+            // Bad Ice Cream Series
+            "bad-ice-cream.html", "bad-ice-cream-2.html", "bad-ice-cream-3.html",
+            // World's Hardest Game & Impossible Quiz
+            "whg.html", "whg2.html", "world-hardest-game.html", "world-hardest-game-2.html", "impossible-quiz.html", "impossible-quiz-2.html",
+            // Classic Nintendo / Retro / Arcade Shortcuts
+            "sm64.html", "mk64.html", "ctr.html", "cb.html", "pacman.html", "tetris.html", "donkey-kong.html", "galaga.html", "space-invaders.html", "asteroids.html", "pong.html", "snake.html", "frogger.html", "breakout.html", "sonic.html", "sonic-2.html", "super-mario-bros.html",
+            // Popular Unblocked / HTML Titles
+            "slope.html", "slope-2.html", "2048.html", "2048-cupcake.html", "flappy-bird.html", "cookie-clicker.html", "doodle-jump.html", "pvz.html", "fnf.html", "retro-bowl.html", "basket-bros.html", "basketball-stars.html", "soccer-skills.html", "8-ball-pool.html", "bitlife.html", "geometry-dash.html", "getting-over-it.html", "happy-wheels.html", "baldis-basics.html", "stickman-hook.html", "tunnel-rush.html", "drift-hunters.html", "madalin-stunt-cars-2.html", "drive-mad.html", "cluster-truck.html", "roblox.html", "crossy-road.html", "subway-surfers.html", "temple-run-2.html", "fruit-ninja.html", "cut-the-rope.html", "paper-io-2.html", "slither-io.html", "agar-io.html", "hole-io.html", "diep-io.html", "surviv-io.html", "zombs-royale.html", "krunker.html", "shell-shockers.html", "1v1-lol.html", "venge-io.html", "ev-io.html",
+            // Sports & Racing
+            "football-masters.html", "tennis-masters.html", "penalty-kick-online.html", "table-tennis-world-tour.html", "head-soccer.html", "line-rider.html", "poly-track.html", "drift-boss.html", "highway-traffic.html", "savage-pursuit.html", "moto-road-rash.html",
+            // Action, Fighting & Shooting
+            "superhot.html", "time-shooter.html", "time-shooter-2.html", "time-shooter-3.html", "funny-shooter-2.html", "rooftop-snipers.html", "rooftop-snipers-2.html", "getaway-shootout.html", "stickman-fighter.html", "stick-merge.html", "gun-mayhem.html", "gun-mayhem-2.html", "strike-force-heroes.html", "raze.html", "raze-2.html", "swords-and-sandals-2.html", "thing-thing.html",
+            // Strategy, Idle & Puzzle
+            "a-dark-room.html", "candy-box.html", "candy-box-2.html", "paper-clip.html", "learn-to-fly.html", "learn-to-fly-2.html", "learn-to-fly-3.html", "shopping-cart-hero.html", "potty-racers.html", "burrito-bison.html", "burrito-bison-launcha-libre.html", "flight.html", "hedgehog-launch.html", "mutilate-a-doll-2.html", "kick-the-buddy.html", "interactive-buddy.html", "plague-inc.html", "bloons-tower-defense-3.html", "bloons-tower-defense-4.html", "bloons-tower-defense-5.html", "kingdom-rush.html", "age-of-war.html", "age-of-war-2.html", "stick-war.html", "stick-war-2.html", "feudalism.html", "miragine-war.html", "chess.html", "sudoku.html", "minesweeper.html", "wordle.html", "solitaire.html",
+            // Additional Offline HTML Entries
+            "hextris.html", "clumsy-bird.html", "canvas-rider.html", "pacman-3d.html", "space-company.html", "doodle-god.html", "doodle-devil.html", "gridland.html", "progressbar95.html", "evolution.html", "cell-to-singularity.html", "miner-dash.html", "idle-breakout.html", "idle-dice.html", "tinytitan.html", "cubefield.html", "n-gon.html", "elastomania.html", "fancy-pants-adventure.html", "fancy-pants-2.html", "fancy-pants-3.html", "alien-hominid.html", "castle-crashers-mini.html", "dad-and-me.html", "abobo-big-adventure.html", "matrix-rampage.html", "shift.html", "shift-2.html", "shift-3.html", "sugar-sugar.html", "sugar-sugar-2.html", "monument-valley-clone.html", "thomas-was-alone-demo.html", "vVVVVV-demo.html", "super-meat-boy-mini.html", "cave-story.html", "spelunky-html5.html", "under-run.html", "js13k-space.html", "radius-raid.html", "tower-game.html", "circle-runner.html", "hextris-mobile.html", "astray.html", "space-huggers.html", "command-and-conquer.html", "simcity-classic.html", "prince-of-persia.html", "wolfenstein-3d.html", "doom-html5.html", "duke-nukem-3d.html", "quake-web.html", "halflife-web.html", "diablo-web.html", "fallout-1-demo.html", "heroes-3-mini.html", "warcraft-1-web.html", "starcraft-mini.html", "gta-1-html.html", "counter-strike-1.6.html", "crossfire-mini.html", "unreal-tournament.html", "quakestart.html", "blood-web.html", "hexen-web.html", "strife-web.html", "chex-quest.html", "lemmings.html", "outrun.html", "micro-machines.html", "sensible-soccer.html", "speedball-2.html", "cannon-fodder.html", "syndicate.html", "theme-park.html", "transport-tycoon.html", "rollercoaster-tycoon-mini.html", "simcity-2000.html", "civilization-1.html", "colonization.html", "master-of-orion.html", "x-com-ufo.html", "monkey-island.html", "day-of-tentacle.html", "sam-and-max.html", "grim-fandango-mini.html", "myst.html", "riven-demo.html", "zork.html", "nethack.html", "angband.html", "dungeon-crawl.html", "rogue.html", "tower-of-doom.html", "gauntlet.html", "golden-axe.html", "streets-of-rage.html", "double-dragon.html", "final-fight.html", "cadillacs-dinosaurs.html", "punisher.html", "x-men-arcade.html", "tmnt-turtles-in-time.html", "simpsons-arcade.html", "captain-america.html", "alien-vs-predator.html", "battle-toads.html", "sunset-riders.html", "metal-slug.html", "metal-slug-2.html", "metal-slug-x.html", "metal-slug-3.html", "contra.html", "super-contra.html", "contra-hard-corps.html", "castlevania.html", "castlevania-sotn-demo.html", "metroid.html", "super-metroid.html", "mega-man.html", "mega-man-2.html", "mega-man-x.html", "street-fighter-2.html", "mortal-kombat.html", "mortal-kombat-2.html", "tekken-mini.html", "king-of-fighters.html", "fatal-fury.html", "samurai-shodown.html", "marvel-vs-capcom.html", "rival-schools.html", "soul-calibur-mini.html", "bloody-roar.html", "virtua-fighter.html", "ridge-racer.html", "need-for-speed.html", "gran-turismo-mini.html", "wipeout-web.html", "wave-race.html", "f-zero.html", "excitebike.html", "road-rash.html", "skitchin.html", "top-gear.html", "outrun-2067.html", "lotus-turbo.html", "v-rally.html", "colin-mcrae.html", "sega-rally.html", "daytona-usa.html", "hydro-thunder.html", "san-francisco-rush.html", "cruisin-usa.html", "crazy-taxi.html", "tony-hawk-2-demo.html", "matt-hoffman-bmx.html", "dave-mirra-bmx.html", "ssx-tricky-mini.html", "cool-boarders.html", "1080-snowboarding.html", "wave-runner.html", "ski-free.html", "rodent-revenge.html", "chip-challenge.html", "jezzball.html", "pipe-dream.html", "minesweeper-classic.html", "freecell.html", "spider-solitaire.html", "hearts.html", "pinball-3d.html"
+        ];
+
+        const gamesDataset = rawFilenames.map(filename => {
+            const title = decodeGameTitle(filename);
+            return {
+                filename: filename,
+                title: title,
+                category: assignCategory(filename, title),
+                url: `offline/${filename}`
+            };
+        });
+
+        // App state
+        let currentCategory = 'all';
+        let searchQuery = '';
 
         const gamesGrid = document.getElementById('gamesGrid');
         const searchInput = document.getElementById('searchInput');
-        const gameCount = document.getElementById('gameCount');
+        const categoryBtns = document.querySelectorAll('.category-btn');
+        const statsDisplay = document.getElementById('statsDisplay');
 
-        function renderGames(games) {
+        function render() {
+            const recentList = getRecentlyPlayed();
+            
+            let filtered = gamesDataset.filter(game => {
+                // Category Filter
+                if (currentCategory === 'recent') {
+                    if (!recentList.includes(game.filename)) return false;
+                } else if (currentCategory !== 'all' && game.category !== currentCategory) {
+                    return false;
+                }
+
+                // Search Filter
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    const matchTitle = game.title.toLowerCase().includes(q);
+                    const matchFile = game.filename.toLowerCase().includes(q);
+                    return matchTitle || matchFile;
+                }
+
+                return true;
+            });
+
+            // If sorting by recent, preserve recent order
+            if (currentCategory === 'recent') {
+                filtered.sort((a, b) => {
+                    return recentList.indexOf(a.filename) - recentList.indexOf(b.filename);
+                });
+            } else {
+                // Otherwise sort alphabetically
+                filtered.sort((a, b) => a.title.localeCompare(b.title));
+            }
+
             gamesGrid.innerHTML = '';
-            gameCount.textContent = `Showing ${games.length} of ${allGames.length} games`;
 
-            if (games.length === 0) {
-                gamesGrid.innerHTML = '<div class="no-results">No games match your search term.</div>';
+            if (filtered.length === 0) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.className = 'empty-message';
+                if (currentCategory === 'recent' && recentList.length === 0) {
+                    emptyMsg.textContent = 'No recently played games found in your cookies yet. Click on any game to start playing!';
+                } else {
+                    emptyMsg.textContent = 'No games found matching your search or category filter.';
+                }
+                gamesGrid.appendChild(emptyMsg);
+                statsDisplay.textContent = `0 Games`;
                 return;
             }
 
             const fragment = document.createDocumentFragment();
 
-            games.forEach(game => {
-                const link = document.createElement('a');
-                link.className = 'game-link';
-                link.href = game.url;
-                link.textContent = game.title;
-                fragment.appendChild(link);
+            filtered.forEach(game => {
+                const card = document.createElement('a');
+                card.className = 'game-card';
+                card.href = game.url;
+                
+                // Track click event in cookie before navigation
+                card.addEventListener('click', () => {
+                    recordGamePlay(game.filename);
+                });
+
+                const titleEl = document.createElement('div');
+                titleEl.className = 'game-title';
+                titleEl.textContent = game.title;
+
+                const metaEl = document.createElement('div');
+                metaEl.className = 'game-meta';
+
+                const pathEl = document.createElement('span');
+                pathEl.className = 'game-path';
+                pathEl.textContent = `offline/${game.filename}`;
+
+                metaEl.appendChild(pathEl);
+
+                card.appendChild(titleEl);
+                card.appendChild(metaEl);
+
+                fragment.appendChild(card);
             });
 
             gamesGrid.appendChild(fragment);
+            statsDisplay.textContent = `Showing ${filtered.length} of ${gamesDataset.length} Games`;
         }
 
-        searchInput.addEventListener('input', () => {
-            const query = searchInput.value.toLowerCase().trim();
-            const filtered = allGames.filter(game => 
-                game.title.toLowerCase().includes(query) || 
-                game.filename.toLowerCase().includes(query)
-            );
-            renderGames(filtered);
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.trim();
+            render();
         });
 
-        renderGames(allGames);
+        categoryBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                categoryBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentCategory = btn.getAttribute('data-category');
+                render();
+            });
+        });
+
+        // Initialize application on load
+        window.addEventListener('DOMContentLoaded', () => {
+            render();
+        });
     </script>
 </body>
 </html>
