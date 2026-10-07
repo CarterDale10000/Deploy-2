@@ -44,6 +44,13 @@
             border-bottom: 2px solid #ddd;
             padding-bottom: 5px;
         }
+        .error-msg {
+            color: #c00;
+            background: #fee;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #fcc;
+        }
     </style>
 </head>
 <body>
@@ -57,11 +64,18 @@
     <ul id="allList"></ul>
 
     <script>
-        const API_URL = 'https://api.github.com/repos/CoolDude2349/Offline-HTML-Games-Pack/git/trees/master?recursive=1';
+        // CONFIGURATION: Replace with your GitHub username if your fork has custom changes!
+        const GITHUB_USER = 'CoolDude2349'; 
+        const REPO_NAME = 'Offline-HTML-Games-Pack';
+        const BRANCH = 'master'; // Change to 'main' if your fork uses main branch
+
+        const API_URL = `https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/git/trees/${BRANCH}?recursive=1`;
+        
         let allGames = [];
         let searchTimeout;
 
         const EXCLUDED_FILES = [
+            'index.html',
             'single-file.html', 
             'file-input.html', 
             'file-input-minified.html', 
@@ -93,7 +107,7 @@
 
         function formatGameName(filePath) {
             let parts = filePath.split('/');
-            let name = parts.pop().replace(/\.html$/i, '');
+            let name = parts.pop().replace(/\.(html|htm)$/i, '');
 
             const genericNames = ['index', 'game', 'main', 'play', 'default'];
             if (genericNames.includes(name.toLowerCase()) && parts.length > 0) {
@@ -151,10 +165,9 @@
             const li = document.createElement('li');
             const a = document.createElement('a');
             
-            // FIX 1: Removed 'offline/' prefix
-            // FIX 2: URL-encoded each part of the path so spaces/special characters don't break the link
-            a.href = game.path.split('/').map(part => encodeURIComponent(part)).join('/');
-            
+            // Format link relative to Netlify root directory
+            const encodedPath = game.path.split('/').map(encodeURIComponent).join('/');
+            a.href = `./${encodedPath}`;
             a.textContent = game.name;
             
             a.addEventListener('click', () => {
@@ -168,17 +181,24 @@
         async function fetchGames() {
             try {
                 const response = await fetch(API_URL);
-                if (!response.ok) throw new Error('Network response was not ok');
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        throw new Error('GitHub API rate limit exceeded. Please wait a few minutes or check your repo settings.');
+                    }
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
 
                 if (data && data.tree) {
                     allGames = data.tree
                         .filter(item => {
                             if (item.type !== 'blob') return false;
-                            if (!item.path.toLowerCase().endsWith('.html')) return false;
-                            if (item.path.includes('inline-tools/')) return false;
                             
-                            const filename = item.path.split('/').pop();
+                            const pathLower = item.path.toLowerCase();
+                            if (!pathLower.endsWith('.html') && !pathLower.endsWith('.htm')) return false;
+                            if (pathLower.includes('inline-tools/')) return false;
+                            
+                            const filename = item.path.split('/').pop().toLowerCase();
                             if (EXCLUDED_FILES.includes(filename)) return false;
                             
                             return true;
@@ -194,7 +214,7 @@
                     renderGames();
                 }
             } catch (error) {
-                document.getElementById('allList').innerHTML = '<li>Error loading games list.</li>';
+                document.getElementById('allList').innerHTML = `<li class="error-msg">Error loading games list: ${error.message}</li>`;
                 console.error("Fetch error:", error);
             }
         }
