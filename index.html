@@ -68,20 +68,18 @@
             'epicviewer.htm'
         ];
 
-        // Switched from cookies to localStorage to support offline file:// viewing
         function getRecentGames() {
             try {
                 const stored = localStorage.getItem('recentGames');
                 return stored ? JSON.parse(stored) : [];
             } catch (e) {
-                console.error("Could not read from localStorage", e);
                 return [];
             }
         }
 
         function saveRecentGame(gamePath) {
             let recent = getRecentGames();
-            recent = recent.filter(path => path !== gamePath); // Remove if already exists to push to top
+            recent = recent.filter(path => path !== gamePath);
             recent.unshift(gamePath);
             if (recent.length > 20) {
                 recent.pop();
@@ -95,9 +93,8 @@
 
         function formatGameName(filePath) {
             let parts = filePath.split('/');
-            let name = parts.pop().replace(/\.html$/i, ''); // Get filename without extension
+            let name = parts.pop().replace(/\.html$/i, '');
 
-            // If the filename is generic (e.g., index.html), use its parent folder's name instead
             const genericNames = ['index', 'game', 'main', 'play', 'default'];
             if (genericNames.includes(name.toLowerCase()) && parts.length > 0) {
                 name = parts.pop();
@@ -105,19 +102,16 @@
 
             let lowerName = name.toLowerCase();
 
-            // Handle specific overrides
             if (lowerName === 'sm64') return 'Super Mario 64';
             if (lowerName === 'fnaf') return "Five Nights at Freddy's";
             if (lowerName === 'pvz') return 'Plants vs Zombies';
 
-            // Handle Minecraft versions (e.g., 1.3, 1.5.2, b1.7.3, a1.2.6)
             if (/^(a|b)?\d+(\.\d+)+$/.test(lowerName)) {
                 if (lowerName.startsWith('b')) return 'Minecraft Beta ' + lowerName.substring(1);
                 if (lowerName.startsWith('a')) return 'Minecraft Alpha ' + lowerName.substring(1);
                 return 'Minecraft ' + lowerName;
             }
 
-            // Remove dashes/underscores and capitalize words
             return name
                 .replace(/[-_]+/g, ' ')
                 .replace(/\b\w/g, char => char.toUpperCase());
@@ -134,7 +128,6 @@
             const lowerFilter = filterText.toLowerCase();
             const recentPaths = getRecentGames();
 
-            // Render Recent Games
             if (filterText === '' && recentPaths.length > 0) {
                 recentLabel.style.display = 'block';
                 recentPaths.forEach(path => {
@@ -147,7 +140,6 @@
                 recentLabel.style.display = 'none';
             }
 
-            // Render All Games
             allGames.forEach(game => {
                 if (game.name.toLowerCase().includes(lowerFilter) || game.path.toLowerCase().includes(lowerFilter)) {
                     allListEl.appendChild(createListItem(game));
@@ -159,11 +151,12 @@
             const li = document.createElement('li');
             const a = document.createElement('a');
             
-            // Keeps the full folder path intact so links don't lead to dead ends
-            a.href = `offline/${game.path}`;
+            // FIX 1: Removed 'offline/' prefix
+            // FIX 2: URL-encoded each part of the path so spaces/special characters don't break the link
+            a.href = game.path.split('/').map(part => encodeURIComponent(part)).join('/');
+            
             a.textContent = game.name;
             
-            // Save the exact path to recent games when clicked
             a.addEventListener('click', () => {
                 saveRecentGame(game.path);
             });
@@ -192,17 +185,16 @@
                         })
                         .map(item => {
                             return {
-                                path: item.path, // Store the exact path for the link
-                                name: formatGameName(item.path) // Generate a clean name
+                                path: item.path,
+                                name: formatGameName(item.path)
                             };
                         });
                     
-                    // Sort alphabetically by the clean name
                     allGames.sort((a, b) => a.name.localeCompare(b.name));
                     renderGames();
                 }
             } catch (error) {
-                document.getElementById('allList').innerHTML = '<li>Error loading games list. Are you connected to the internet to fetch the index?</li>';
+                document.getElementById('allList').innerHTML = '<li>Error loading games list.</li>';
                 console.error("Fetch error:", error);
             }
         }
@@ -214,7 +206,6 @@
             }, 300);
         });
 
-        // Init
         fetchGames();
     </script>
 </body>
