@@ -20,13 +20,14 @@
             margin-bottom: 20px;
             box-sizing: border-box;
             border: 1px solid #ccc;
+            border-radius: 4px;
         }
         ul {
             list-style-type: disc;
             padding-left: 20px;
         }
         li {
-            margin-bottom: 5px;
+            margin-bottom: 8px;
         }
         a {
             color: #0066cc;
@@ -39,14 +40,17 @@
             font-weight: bold;
             margin-top: 20px;
             margin-bottom: 10px;
+            font-size: 1.2em;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 5px;
         }
     </style>
 </head>
 <body>
 
-    <input type="text" id="searchInput" placeholder="Search...">
+    <input type="text" id="searchInput" placeholder="Search for a game...">
 
-    <div class="section-label">Recently Played</div>
+    <div class="section-label" id="recentLabel">Recently Played</div>
     <ul id="recentList"></ul>
 
     <div class="section-label">All Games</div>
@@ -64,30 +68,41 @@
             'epicviewer.htm'
         ];
 
+        // Switched from cookies to localStorage to support offline file:// viewing
         function getRecentGames() {
-            const cookieString = document.cookie.split('; ').find(row => row.startsWith('recentGames='));
-            if (cookieString) {
-                try {
-                    return JSON.parse(decodeURIComponent(cookieString.split('=')[1]));
-                } catch (e) {
-                    return [];
-                }
+            try {
+                const stored = localStorage.getItem('recentGames');
+                return stored ? JSON.parse(stored) : [];
+            } catch (e) {
+                console.error("Could not read from localStorage", e);
+                return [];
             }
-            return [];
         }
 
-        function saveRecentGame(filename) {
+        function saveRecentGame(gamePath) {
             let recent = getRecentGames();
-            recent = recent.filter(game => game !== filename);
-            recent.unshift(filename);
+            recent = recent.filter(path => path !== gamePath); // Remove if already exists to push to top
+            recent.unshift(gamePath);
             if (recent.length > 20) {
                 recent.pop();
             }
-            document.cookie = `recentGames=${encodeURIComponent(JSON.stringify(recent))}; path=/; max-age=31536000`; // 1 year expiration
+            try {
+                localStorage.setItem('recentGames', JSON.stringify(recent));
+            } catch (e) {
+                console.error("Could not save to localStorage", e);
+            }
         }
 
-        function formatGameName(filename) {
-            let name = filename.replace(/\.html$/i, '');
+        function formatGameName(filePath) {
+            let parts = filePath.split('/');
+            let name = parts.pop().replace(/\.html$/i, ''); // Get filename without extension
+
+            // If the filename is generic (e.g., index.html), use its parent folder's name instead
+            const genericNames = ['index', 'game', 'main', 'play', 'default'];
+            if (genericNames.includes(name.toLowerCase()) && parts.length > 0) {
+                name = parts.pop();
+            }
+
             let lowerName = name.toLowerCase();
 
             // Handle specific overrides
@@ -111,49 +126,46 @@
         function renderGames(filterText = '') {
             const recentListEl = document.getElementById('recentList');
             const allListEl = document.getElementById('allList');
+            const recentLabel = document.getElementById('recentLabel');
             
             recentListEl.innerHTML = '';
             allListEl.innerHTML = '';
 
             const lowerFilter = filterText.toLowerCase();
-            const recentFilenames = getRecentGames();
+            const recentPaths = getRecentGames();
 
             // Render Recent Games
-            if (filterText === '') {
-                recentFilenames.forEach(filename => {
-                    const game = allGames.find(g => g.filename === filename);
+            if (filterText === '' && recentPaths.length > 0) {
+                recentLabel.style.display = 'block';
+                recentPaths.forEach(path => {
+                    const game = allGames.find(g => g.path === path);
                     if (game) {
                         recentListEl.appendChild(createListItem(game));
                     }
                 });
             } else {
-                const recentLabel = recentListEl.previousElementSibling;
                 recentLabel.style.display = 'none';
             }
 
             // Render All Games
             allGames.forEach(game => {
-                if (game.name.toLowerCase().includes(lowerFilter) || game.filename.toLowerCase().includes(lowerFilter)) {
+                if (game.name.toLowerCase().includes(lowerFilter) || game.path.toLowerCase().includes(lowerFilter)) {
                     allListEl.appendChild(createListItem(game));
                 }
             });
-
-            // Toggle Recent label visibility
-            if (filterText === '') {
-                recentListEl.previousElementSibling.style.display = 'block';
-            }
         }
 
         function createListItem(game) {
             const li = document.createElement('li');
             const a = document.createElement('a');
-            a.href = `offline/${game.filename}`;
+            
+            // Keeps the full folder path intact so links don't lead to dead ends
+            a.href = `offline/${game.path}`;
             a.textContent = game.name;
             
-            a.addEventListener('click', (e) => {
-                e.preventDefault();
-                saveRecentGame(game.filename);
-                window.location.href = a.href;
+            // Save the exact path to recent games when clicked
+            a.addEventListener('click', () => {
+                saveRecentGame(game.path);
             });
 
             li.appendChild(a);
@@ -169,7 +181,6 @@
                 if (data && data.tree) {
                     allGames = data.tree
                         .filter(item => {
-                            // Must be a file, end with .html, not be in inline-tools, and not be in excluded list
                             if (item.type !== 'blob') return false;
                             if (!item.path.toLowerCase().endsWith('.html')) return false;
                             if (item.path.includes('inline-tools/')) return false;
@@ -180,19 +191,18 @@
                             return true;
                         })
                         .map(item => {
-                            const filename = item.path.split('/').pop();
                             return {
-                                filename: filename,
-                                name: formatGameName(filename)
+                                path: item.path, // Store the exact path for the link
+                                name: formatGameName(item.path) // Generate a clean name
                             };
                         });
                     
-                    // Sort alphabetically
+                    // Sort alphabetically by the clean name
                     allGames.sort((a, b) => a.name.localeCompare(b.name));
                     renderGames();
                 }
             } catch (error) {
-                document.getElementById('allList').innerHTML = '<li>Error loading games list.</li>';
+                document.getElementById('allList').innerHTML = '<li>Error loading games list. Are you connected to the internet to fetch the index?</li>';
                 console.error("Fetch error:", error);
             }
         }
@@ -201,7 +211,7 @@
             clearTimeout(searchTimeout);
             searchTimeout = setTimeout(() => {
                 renderGames(e.target.value.trim());
-            }, 300); // Simple debounce
+            }, 300);
         });
 
         // Init
