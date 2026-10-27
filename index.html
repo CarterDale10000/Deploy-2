@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Directory</title>
+    <title>Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><circle cx='128' cy='128' r='128' fill='%23e43a3c'/><circle cx='128' cy='128' r='70' fill='none' stroke='white' stroke-width='24' stroke-dasharray='30 20'/><circle cx='128' cy='128' r='30' fill='white'/></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
@@ -26,6 +27,15 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 30px 20px 100px;
+            transition: background-color 0.3s;
+        }
+
+        a[href*="netlify.com"], 
+        #netlify-logo, 
+        .netlify-badge {
+            display: none !important;
+            opacity: 0 !important;
+            pointer-events: none !important;
         }
 
         .header-controls {
@@ -36,6 +46,7 @@
             z-index: 100;
             display: flex;
             gap: 12px;
+            align-items: center;
         }
 
         input[type="text"] {
@@ -44,7 +55,7 @@
             border: 1px solid #ced4da;
             border-radius: 8px;
             font-size: 1rem;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
 
@@ -54,24 +65,31 @@
             box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
         }
 
-        .btn {
-            padding: 12px 20px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.95rem;
-            transition: all 0.2s;
-        }
-
-        .btn-secondary {
-            background-color: var(--surface);
-            color: var(--text-main);
+        .btn-tiny {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
             border: 1px solid #ced4da;
+            background-color: var(--surface);
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
 
-        .btn-secondary:hover {
+        .btn-tiny:hover {
             background-color: #e2e6ea;
+            color: var(--text-main);
+        }
+
+        .btn-tiny.active {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            color: white;
         }
 
         .section-label {
@@ -81,6 +99,10 @@
             padding-bottom: 8px;
             border-bottom: 2px solid var(--border);
             color: var(--text-main);
+        }
+
+        .section-label.hidden {
+            display: none;
         }
 
         ul {
@@ -99,7 +121,8 @@
             padding: 12px 16px;
             border-radius: 8px;
             border: 1px solid var(--border);
-            transition: transform 0.1s, box-shadow 0.1s;
+            transition: all 0.2s ease;
+            cursor: default;
         }
 
         li:hover {
@@ -107,18 +130,26 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.04);
         }
 
+        body.select-mode li {
+            cursor: pointer;
+        }
+
         .checkbox-wrapper {
-            display: flex;
+            display: none;
             align-items: center;
             justify-content: center;
             margin-right: 16px;
         }
 
+        body.select-mode .checkbox-wrapper {
+            display: flex;
+        }
+
         input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
             cursor: pointer;
             accent-color: var(--primary);
+            width: 18px;
+            height: 18px;
         }
 
         .game-link {
@@ -127,11 +158,16 @@
             font-weight: 500;
             flex-grow: 1;
             font-size: 1.05rem;
+            transition: all 0.2s;
         }
 
         .game-link:hover {
             color: var(--primary-hover);
             text-decoration: underline;
+        }
+
+        body.select-mode .game-link {
+            pointer-events: none;
         }
 
         .download-bar {
@@ -146,53 +182,67 @@
             display: flex;
             align-items: center;
             gap: 20px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             z-index: 1000;
             width: max-content;
             max-width: 90%;
+            transition: opacity 0.3s, transform 0.3s;
         }
 
-        .btn-success {
-            background-color: var(--success);
-            color: white;
+        .download-bar.hidden { 
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, 20px);
         }
 
-        .btn-success:hover:not(:disabled) {
-            background-color: var(--success-hover);
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.2s;
         }
 
-        .btn-success:disabled {
-            background-color: #495057;
-            color: #adb5bd;
-            cursor: not-allowed;
-        }
+        .btn-success { background-color: var(--success); color: white; }
+        .btn-success:hover:not(:disabled) { background-color: var(--success-hover); }
+        .btn-success:disabled { background-color: #495057; color: #adb5bd; cursor: not-allowed; }
+        
+        .btn-outline { background: transparent; border: 1px solid #6c757d; color: #fff; }
+        .btn-outline:hover { background: #6c757d; }
 
         .error-msg {
             color: #dc3545;
             background: #f8d7da;
             border-color: #f5c6cb;
             padding: 16px;
+            border-radius: 8px;
         }
-
-        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
     <div class="header-controls">
-        <input type="text" id="searchInput" placeholder="Search games...">
-        <button class="btn btn-secondary" id="selectAllBtn">Select All</button>
+        <input type="text" id="searchInput" placeholder="Search...">
+        <button class="btn-tiny" id="toggleModeBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9 11 12 14 22 4"></polyline>
+                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
+            </svg>
+        </button>
     </div>
 
-    <div class="section-label hidden" id="recentLabel">Recently Played</div>
+    <div class="section-label hidden" id="recentLabel">Recent</div>
     <ul id="recentList"></ul>
 
-    <div class="section-label">All Games</div>
+    <div class="section-label">Directory</div>
     <ul id="allList"></ul>
 
     <div class="download-bar hidden" id="downloadBar">
-        <span id="selectedCount" style="font-weight: 500;">0 games selected</span>
-        <button class="btn btn-success" id="downloadBtn" disabled>Download Selected (.ZIP)</button>
+        <button class="btn btn-outline" id="selectAllBtn">Select All</button>
+        <span id="selectedCount" style="font-weight: 500;">0 selected</span>
+        <button class="btn btn-success" id="downloadBtn" disabled>Download (.ZIP)</button>
     </div>
 
     <script>
@@ -207,11 +257,13 @@
         const state = {
             games: [],
             selectedPaths: new Set(),
-            searchQuery: ''
+            searchQuery: '',
+            isSelectMode: false
         };
 
         const DOM = {
             searchInput: document.getElementById('searchInput'),
+            toggleModeBtn: document.getElementById('toggleModeBtn'),
             selectAllBtn: document.getElementById('selectAllBtn'),
             recentLabel: document.getElementById('recentLabel'),
             recentList: document.getElementById('recentList'),
@@ -227,6 +279,7 @@
         }
 
         function saveRecentGame(path) {
+            if (state.isSelectMode) return; 
             let recent = getRecentGames().filter(p => p !== path);
             recent.unshift(path);
             if (recent.length > 10) recent.pop();
@@ -257,13 +310,31 @@
 
         function updateDownloadUI() {
             const count = state.selectedPaths.size;
-            DOM.selectedCount.textContent = `${count} game${count !== 1 ? 's' : ''} selected`;
+            DOM.selectedCount.textContent = `${count} selected`;
             DOM.downloadBtn.disabled = count === 0;
-            DOM.downloadBar.classList.toggle('hidden', count === 0);
+            
+            if (state.isSelectMode) {
+                DOM.downloadBar.classList.remove('hidden');
+            } else {
+                DOM.downloadBar.classList.add('hidden');
+            }
         }
 
         function toggleSelection(path, isChecked) {
             isChecked ? state.selectedPaths.add(path) : state.selectedPaths.delete(path);
+            updateDownloadUI();
+        }
+
+        function toggleSelectMode() {
+            state.isSelectMode = !state.isSelectMode;
+            document.body.classList.toggle('select-mode', state.isSelectMode);
+            DOM.toggleModeBtn.classList.toggle('active', state.isSelectMode);
+            
+            if (!state.isSelectMode) {
+                state.selectedPaths.clear();
+                renderGames();
+            }
+            
             updateDownloadUI();
         }
 
@@ -290,15 +361,31 @@
             checkbox.dataset.path = game.path;
             checkbox.checked = state.selectedPaths.has(game.path);
             checkbox.id = `${isRecent ? 'recent' : 'all'}-${game.path}`;
-            checkbox.addEventListener('change', e => toggleSelection(game.path, e.target.checked));
             
+            li.addEventListener('click', (e) => {
+                if (state.isSelectMode) {
+                    if (e.target !== checkbox) {
+                        checkbox.checked = !checkbox.checked;
+                        toggleSelection(game.path, checkbox.checked);
+                    }
+                }
+            });
+
+            checkbox.addEventListener('change', e => toggleSelection(game.path, e.target.checked));
             checkboxWrapper.appendChild(checkbox);
 
             const a = document.createElement('a');
             a.className = 'game-link';
             a.href = `./${game.path.split('/').map(encodeURIComponent).join('/')}`;
             a.textContent = game.name;
-            a.addEventListener('click', () => saveRecentGame(game.path));
+            
+            a.addEventListener('click', (e) => {
+                if (state.isSelectMode) {
+                    e.preventDefault();
+                } else {
+                    saveRecentGame(game.path);
+                }
+            });
 
             li.append(checkboxWrapper, a);
             return li;
@@ -356,7 +443,7 @@
                 
                 renderGames();
             } catch (err) {
-                DOM.allList.innerHTML = `<li class="error-msg">Failed to load games: ${err.message}</li>`;
+                DOM.allList.innerHTML = `<li class="error-msg">Failed to load directory: ${err.message}</li>`;
             }
         }
 
@@ -373,7 +460,6 @@
             const paths = Array.from(state.selectedPaths);
 
             try {
-                // Fetch in sequence to avoid overwhelming the browser/network
                 for (const path of paths) {
                     DOM.downloadBtn.textContent = `Fetching ${++completed} of ${total}...`;
                     const fileUrl = `./${path.split('/').map(encodeURIComponent).join('/')}`;
@@ -387,15 +473,13 @@
                 
                 const link = document.createElement('a');
                 link.href = URL.createObjectURL(content);
-                link.download = 'Offline_Games_Pack.zip';
+                link.download = 'Archive.zip';
                 document.body.appendChild(link);
                 link.click();
                 link.remove();
                 URL.revokeObjectURL(link.href);
 
-                // Optional: Clear selection after successful download
-                // state.selectedPaths.clear(); 
-                // renderGames();
+                toggleSelectMode();
 
             } catch (err) {
                 alert(`Download error: ${err.message}`);
@@ -403,11 +487,10 @@
             } finally {
                 updateDownloadUI();
                 DOM.selectAllBtn.disabled = false;
-                DOM.downloadBtn.textContent = 'Download Selected (.ZIP)';
+                DOM.downloadBtn.textContent = 'Download (.ZIP)';
             }
         }
 
-        // Event Listeners
         let debounceTimer;
         DOM.searchInput.addEventListener('input', e => {
             clearTimeout(debounceTimer);
@@ -417,10 +500,10 @@
             }, 250);
         });
 
+        DOM.toggleModeBtn.addEventListener('click', toggleSelectMode);
         DOM.selectAllBtn.addEventListener('click', handleSelectAll);
         DOM.downloadBtn.addEventListener('click', executeDownload);
 
-        // Initialize
         fetchGamesList();
     </script>
 </body>
