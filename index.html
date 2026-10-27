@@ -3,230 +3,425 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Directory</title>
+    <title>Game Directory</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
+        :root {
+            --primary: #0066cc;
+            --primary-hover: #0052a3;
+            --success: #28a745;
+            --success-hover: #218838;
+            --bg: #f8f9fa;
+            --surface: #ffffff;
+            --border: #e9ecef;
+            --text-main: #212529;
+            --text-muted: #6c757d;
+        }
+
         body {
-            font-family: system-ui, -apple-system, sans-serif;
-            background-color: #f5f5f5;
-            color: #333;
-            line-height: 1.4;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.5;
             max-width: 800px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 30px 20px 100px;
         }
+
+        .header-controls {
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            padding: 10px 0 20px;
+            z-index: 100;
+            display: flex;
+            gap: 12px;
+        }
+
         input[type="text"] {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            flex-grow: 1;
+            padding: 12px 16px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+        }
+
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary {
+            background-color: var(--surface);
+            color: var(--text-main);
+            border: 1px solid #ced4da;
+        }
+
+        .btn-secondary:hover {
+            background-color: #e2e6ea;
+        }
+
+        .section-label {
+            font-weight: 700;
+            font-size: 1.25rem;
+            margin: 30px 0 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border);
+            color: var(--text-main);
+        }
+
         ul {
-            list-style-type: disc;
-            padding-left: 20px;
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
+
         li {
-            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            background: var(--surface);
+            padding: 12px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            transition: transform 0.1s, box-shadow 0.1s;
         }
-        a {
-            color: #0066cc;
+
+        li:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+        }
+
+        .checkbox-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        .game-link {
+            color: var(--primary);
             text-decoration: none;
+            font-weight: 500;
+            flex-grow: 1;
+            font-size: 1.05rem;
         }
-        a:hover {
+
+        .game-link:hover {
+            color: var(--primary-hover);
             text-decoration: underline;
         }
-        .section-label {
-            font-weight: bold;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            font-size: 1.2em;
-            border-bottom: 2px solid #ddd;
-            padding-bottom: 5px;
+
+        .download-bar {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1a1d20;
+            color: #fff;
+            padding: 16px 24px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            z-index: 1000;
+            width: max-content;
+            max-width: 90%;
         }
+
+        .btn-success {
+            background-color: var(--success);
+            color: white;
+        }
+
+        .btn-success:hover:not(:disabled) {
+            background-color: var(--success-hover);
+        }
+
+        .btn-success:disabled {
+            background-color: #495057;
+            color: #adb5bd;
+            cursor: not-allowed;
+        }
+
         .error-msg {
-            color: #c00;
-            background: #fee;
-            padding: 10px;
-            border-radius: 4px;
-            border: 1px solid #fcc;
+            color: #dc3545;
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            padding: 16px;
         }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <input type="text" id="searchInput" placeholder="Search for a game...">
+    <div class="header-controls">
+        <input type="text" id="searchInput" placeholder="Search games...">
+        <button class="btn btn-secondary" id="selectAllBtn">Select All</button>
+    </div>
 
-    <div class="section-label" id="recentLabel">Recently Played</div>
+    <div class="section-label hidden" id="recentLabel">Recently Played</div>
     <ul id="recentList"></ul>
 
     <div class="section-label">All Games</div>
     <ul id="allList"></ul>
 
+    <div class="download-bar hidden" id="downloadBar">
+        <span id="selectedCount" style="font-weight: 500;">0 games selected</span>
+        <button class="btn btn-success" id="downloadBtn" disabled>Download Selected (.ZIP)</button>
+    </div>
+
     <script>
-        // CONFIGURATION: Replace with your GitHub username if your fork has custom changes!
-        const GITHUB_USER = 'CoolDude2349'; 
-        const REPO_NAME = 'Offline-HTML-Games-Pack';
-        const BRANCH = 'master'; // Change to 'main' if your fork uses main branch
+        const CONFIG = {
+            user: 'CarterDale10000',
+            repo: 'Deploy-2',
+            branch: 'master',
+            apiUrl: () => `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/git/trees/${CONFIG.branch}?recursive=1`,
+            excludedFiles: new Set(['index.html', 'single-file.html', 'file-input.html', 'file-input-minified.html', 'epicviewer.htm', 'readme.md', 'license', '404.html'])
+        };
 
-        const API_URL = `https://api.github.com/repos/${GITHUB_USER}/${REPO_NAME}/git/trees/${BRANCH}?recursive=1`;
-        
-        let allGames = [];
-        let searchTimeout;
+        const state = {
+            games: [],
+            selectedPaths: new Set(),
+            searchQuery: ''
+        };
 
-        const EXCLUDED_FILES = [
-            'index.html',
-            'single-file.html', 
-            'file-input.html', 
-            'file-input-minified.html', 
-            'epicviewer.htm'
-        ];
+        const DOM = {
+            searchInput: document.getElementById('searchInput'),
+            selectAllBtn: document.getElementById('selectAllBtn'),
+            recentLabel: document.getElementById('recentLabel'),
+            recentList: document.getElementById('recentList'),
+            allList: document.getElementById('allList'),
+            downloadBar: document.getElementById('downloadBar'),
+            selectedCount: document.getElementById('selectedCount'),
+            downloadBtn: document.getElementById('downloadBtn')
+        };
 
         function getRecentGames() {
-            try {
-                const stored = localStorage.getItem('recentGames');
-                return stored ? JSON.parse(stored) : [];
-            } catch (e) {
-                return [];
-            }
+            try { return JSON.parse(localStorage.getItem('recentGames')) || []; } 
+            catch { return []; }
         }
 
-        function saveRecentGame(gamePath) {
-            let recent = getRecentGames();
-            recent = recent.filter(path => path !== gamePath);
-            recent.unshift(gamePath);
-            if (recent.length > 20) {
-                recent.pop();
-            }
-            try {
-                localStorage.setItem('recentGames', JSON.stringify(recent));
-            } catch (e) {
-                console.error("Could not save to localStorage", e);
-            }
+        function saveRecentGame(path) {
+            let recent = getRecentGames().filter(p => p !== path);
+            recent.unshift(path);
+            if (recent.length > 10) recent.pop();
+            localStorage.setItem('recentGames', JSON.stringify(recent));
+            renderGames();
         }
 
-        function formatGameName(filePath) {
-            let parts = filePath.split('/');
+        function formatGameName(path) {
+            const parts = path.split('/');
             let name = parts.pop().replace(/\.(html|htm)$/i, '');
-
-            const genericNames = ['index', 'game', 'main', 'play', 'default'];
-            if (genericNames.includes(name.toLowerCase()) && parts.length > 0) {
+            
+            if (['index', 'game', 'main', 'play', 'default'].includes(name.toLowerCase()) && parts.length > 0) {
                 name = parts.pop();
             }
 
-            let lowerName = name.toLowerCase();
+            const lower = name.toLowerCase();
+            const overrides = { 'sm64': 'Super Mario 64', 'fnaf': "Five Nights at Freddy's", 'pvz': 'Plants vs Zombies' };
+            if (overrides[lower]) return overrides[lower];
 
-            if (lowerName === 'sm64') return 'Super Mario 64';
-            if (lowerName === 'fnaf') return "Five Nights at Freddy's";
-            if (lowerName === 'pvz') return 'Plants vs Zombies';
-
-            if (/^(a|b)?\d+(\.\d+)+$/.test(lowerName)) {
-                if (lowerName.startsWith('b')) return 'Minecraft Beta ' + lowerName.substring(1);
-                if (lowerName.startsWith('a')) return 'Minecraft Alpha ' + lowerName.substring(1);
-                return 'Minecraft ' + lowerName;
+            if (/^(a|b)?\d+(\.\d+)+$/.test(lower)) {
+                if (lower.startsWith('b')) return `Minecraft Beta ${lower.substring(1)}`;
+                if (lower.startsWith('a')) return `Minecraft Alpha ${lower.substring(1)}`;
+                return `Minecraft ${lower}`;
             }
 
-            return name
-                .replace(/[-_]+/g, ' ')
-                .replace(/\b\w/g, char => char.toUpperCase());
+            return name.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
         }
 
-        function renderGames(filterText = '') {
-            const recentListEl = document.getElementById('recentList');
-            const allListEl = document.getElementById('allList');
-            const recentLabel = document.getElementById('recentLabel');
-            
-            recentListEl.innerHTML = '';
-            allListEl.innerHTML = '';
+        function updateDownloadUI() {
+            const count = state.selectedPaths.size;
+            DOM.selectedCount.textContent = `${count} game${count !== 1 ? 's' : ''} selected`;
+            DOM.downloadBtn.disabled = count === 0;
+            DOM.downloadBar.classList.toggle('hidden', count === 0);
+        }
 
-            const lowerFilter = filterText.toLowerCase();
-            const recentPaths = getRecentGames();
+        function toggleSelection(path, isChecked) {
+            isChecked ? state.selectedPaths.add(path) : state.selectedPaths.delete(path);
+            updateDownloadUI();
+        }
 
-            if (filterText === '' && recentPaths.length > 0) {
-                recentLabel.style.display = 'block';
-                recentPaths.forEach(path => {
-                    const game = allGames.find(g => g.path === path);
-                    if (game) {
-                        recentListEl.appendChild(createListItem(game));
-                    }
-                });
-            } else {
-                recentLabel.style.display = 'none';
-            }
+        function handleSelectAll() {
+            const visibleCheckboxes = Array.from(document.querySelectorAll('#allList input[type="checkbox"]'));
+            const allCurrentlySelected = visibleCheckboxes.length > 0 && visibleCheckboxes.every(cb => cb.checked);
 
-            allGames.forEach(game => {
-                if (game.name.toLowerCase().includes(lowerFilter) || game.path.toLowerCase().includes(lowerFilter)) {
-                    allListEl.appendChild(createListItem(game));
-                }
+            visibleCheckboxes.forEach(cb => {
+                cb.checked = !allCurrentlySelected;
+                toggleSelection(cb.dataset.path, !allCurrentlySelected);
             });
+
+            DOM.selectAllBtn.textContent = allCurrentlySelected ? 'Select All' : 'Deselect All';
         }
 
-        function createListItem(game) {
+        function createGameElement(game, isRecent = false) {
             const li = document.createElement('li');
-            const a = document.createElement('a');
             
-            // Format link relative to Netlify root directory
-            const encodedPath = game.path.split('/').map(encodeURIComponent).join('/');
-            a.href = `./${encodedPath}`;
-            a.textContent = game.name;
+            const checkboxWrapper = document.createElement('div');
+            checkboxWrapper.className = 'checkbox-wrapper';
             
-            a.addEventListener('click', () => {
-                saveRecentGame(game.path);
-            });
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.dataset.path = game.path;
+            checkbox.checked = state.selectedPaths.has(game.path);
+            checkbox.id = `${isRecent ? 'recent' : 'all'}-${game.path}`;
+            checkbox.addEventListener('change', e => toggleSelection(game.path, e.target.checked));
+            
+            checkboxWrapper.appendChild(checkbox);
 
-            li.appendChild(a);
+            const a = document.createElement('a');
+            a.className = 'game-link';
+            a.href = `./${game.path.split('/').map(encodeURIComponent).join('/')}`;
+            a.textContent = game.name;
+            a.addEventListener('click', () => saveRecentGame(game.path));
+
+            li.append(checkboxWrapper, a);
             return li;
         }
 
-        async function fetchGames() {
-            try {
-                const response = await fetch(API_URL);
-                if (!response.ok) {
-                    if (response.status === 403) {
-                        throw new Error('GitHub API rate limit exceeded. Please wait a few minutes or check your repo settings.');
-                    }
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const data = await response.json();
+        function renderGames() {
+            const query = state.searchQuery.toLowerCase();
+            const recentPaths = getRecentGames();
+            
+            DOM.recentList.innerHTML = '';
+            DOM.allList.innerHTML = '';
 
-                if (data && data.tree) {
-                    allGames = data.tree
-                        .filter(item => {
-                            if (item.type !== 'blob') return false;
-                            
-                            const pathLower = item.path.toLowerCase();
-                            if (!pathLower.endsWith('.html') && !pathLower.endsWith('.htm')) return false;
-                            if (pathLower.includes('inline-tools/')) return false;
-                            
-                            const filename = item.path.split('/').pop().toLowerCase();
-                            if (EXCLUDED_FILES.includes(filename)) return false;
-                            
-                            return true;
-                        })
-                        .map(item => {
-                            return {
-                                path: item.path,
-                                name: formatGameName(item.path)
-                            };
-                        });
-                    
-                    allGames.sort((a, b) => a.name.localeCompare(b.name));
-                    renderGames();
+            const isSearching = query.length > 0;
+            
+            if (!isSearching && recentPaths.length > 0) {
+                DOM.recentLabel.classList.remove('hidden');
+                recentPaths.forEach(path => {
+                    const game = state.games.find(g => g.path === path);
+                    if (game) DOM.recentList.appendChild(createGameElement(game, true));
+                });
+            } else {
+                DOM.recentLabel.classList.add('hidden');
+            }
+
+            let visibleCount = 0;
+            state.games.forEach(game => {
+                if (game.name.toLowerCase().includes(query) || game.path.toLowerCase().includes(query)) {
+                    DOM.allList.appendChild(createGameElement(game));
+                    visibleCount++;
                 }
-            } catch (error) {
-                document.getElementById('allList').innerHTML = `<li class="error-msg">Error loading games list: ${error.message}</li>`;
-                console.error("Fetch error:", error);
+            });
+
+            const allVisibleSelected = visibleCount > 0 && 
+                Array.from(document.querySelectorAll('#allList input[type="checkbox"]')).every(cb => cb.checked);
+            DOM.selectAllBtn.textContent = allVisibleSelected && visibleCount > 0 ? 'Deselect All' : 'Select All';
+        }
+
+        async function fetchGamesList() {
+            try {
+                const res = await fetch(CONFIG.apiUrl());
+                if (!res.ok) throw new Error(res.status === 403 ? 'GitHub API rate limit reached.' : `HTTP ${res.status}`);
+                const data = await res.json();
+
+                state.games = data.tree
+                    .filter(item => {
+                        if (item.type !== 'blob') return false;
+                        const pathLower = item.path.toLowerCase();
+                        if (!pathLower.endsWith('.html') && !pathLower.endsWith('.htm')) return false;
+                        if (pathLower.includes('inline-tools/')) return false;
+                        const filename = pathLower.split('/').pop();
+                        return !CONFIG.excludedFiles.has(filename);
+                    })
+                    .map(item => ({ path: item.path, name: formatGameName(item.path) }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+                
+                renderGames();
+            } catch (err) {
+                DOM.allList.innerHTML = `<li class="error-msg">Failed to load games: ${err.message}</li>`;
             }
         }
 
-        document.getElementById('searchInput').addEventListener('input', (e) => {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                renderGames(e.target.value.trim());
-            }, 300);
+        async function executeDownload() {
+            if (state.selectedPaths.size === 0) return;
+
+            const total = state.selectedPaths.size;
+            let completed = 0;
+            
+            DOM.downloadBtn.disabled = true;
+            DOM.selectAllBtn.disabled = true;
+            
+            const zip = new JSZip();
+            const paths = Array.from(state.selectedPaths);
+
+            try {
+                // Fetch in sequence to avoid overwhelming the browser/network
+                for (const path of paths) {
+                    DOM.downloadBtn.textContent = `Fetching ${++completed} of ${total}...`;
+                    const fileUrl = `./${path.split('/').map(encodeURIComponent).join('/')}`;
+                    const res = await fetch(fileUrl);
+                    if (!res.ok) throw new Error(`Failed to fetch ${path}`);
+                    zip.file(path, await res.blob());
+                }
+
+                DOM.downloadBtn.textContent = 'Generating ZIP...';
+                const content = await zip.generateAsync({ type: 'blob' });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = 'Offline_Games_Pack.zip';
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(link.href);
+
+                // Optional: Clear selection after successful download
+                // state.selectedPaths.clear(); 
+                // renderGames();
+
+            } catch (err) {
+                alert(`Download error: ${err.message}`);
+                console.error(err);
+            } finally {
+                updateDownloadUI();
+                DOM.selectAllBtn.disabled = false;
+                DOM.downloadBtn.textContent = 'Download Selected (.ZIP)';
+            }
+        }
+
+        // Event Listeners
+        let debounceTimer;
+        DOM.searchInput.addEventListener('input', e => {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => {
+                state.searchQuery = e.target.value.trim();
+                renderGames();
+            }, 250);
         });
 
-        fetchGames();
+        DOM.selectAllBtn.addEventListener('click', handleSelectAll);
+        DOM.downloadBtn.addEventListener('click', executeDownload);
+
+        // Initialize
+        fetchGamesList();
     </script>
 </body>
 </html>
