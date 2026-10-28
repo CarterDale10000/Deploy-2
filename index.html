@@ -251,7 +251,8 @@
             repo: 'Deploy-2',
             branch: 'master',
             apiUrl: () => `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/git/trees/${CONFIG.branch}?recursive=1`,
-            excludedFiles: new Set(['index.html', 'single-file.html', 'file-input.html', 'file-input-minified.html', 'epicviewer.htm', 'readme.md', 'license', '404.html'])
+            excludedFiles: new Set(['index.html', 'single-file.html', 'file-input.html', 'file-input-minified.html', 'epicviewer.htm', 'readme.md', 'license', '404.html']),
+            chunkSize: 20 // Number of games per ZIP file
         };
 
         const state = {
@@ -424,10 +425,31 @@
         }
 
         async function fetchGamesList() {
+            const CACHE_KEY = 'github_tree_cache';
+            const CACHE_TIME_KEY = 'github_tree_cache_time';
+            const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
+
             try {
-                const res = await fetch(CONFIG.apiUrl());
-                if (!res.ok) throw new Error(res.status === 403 ? 'GitHub API rate limit reached.' : `HTTP ${res.status}`);
-                const data = await res.json();
+                const now = Date.now();
+                const cachedData = localStorage.getItem(CACHE_KEY);
+                const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
+                let data;
+
+                if (cachedData && cachedTime && (now - parseInt(cachedTime)) < CACHE_TTL) {
+                    data = JSON.parse(cachedData);
+                } else {
+                    DOM.allList.innerHTML = `<li style="justify-content: center; color: var(--text-muted);">Fetching game directory...</li>`;
+                    const res = await fetch(CONFIG.apiUrl());
+                    if (!res.ok) throw new Error(res.status === 403 ? 'GitHub API rate limit reached. Try again later or clear cache.' : `HTTP ${res.status}`);
+                    data = await res.json();
+                    
+                    try {
+                        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+                        localStorage.setItem(CACHE_TIME_KEY, now.toString());
+                    } catch (e) {
+                        console.warn('Local storage full, skipping cache save.');
+                    }
+                }
 
                 state.games = data.tree
                     .filter(item => {
@@ -450,34 +472,50 @@
         async function executeDownload() {
             if (state.selectedPaths.size === 0) return;
 
-            const total = state.selectedPaths.size;
+            const paths = Array.from(state.selectedPaths);
+            const total = paths.length;
             let completed = 0;
             
             DOM.downloadBtn.disabled = true;
             DOM.selectAllBtn.disabled = true;
-            
-            const zip = new JSZip();
-            const paths = Array.from(state.selectedPaths);
 
             try {
-                for (const path of paths) {
-                    DOM.downloadBtn.textContent = `Fetching ${++completed} of ${total}...`;
-                    const fileUrl = `./${path.split('/').map(encodeURIComponent).join('/')}`;
-                    const res = await fetch(fileUrl);
-                    if (!res.ok) throw new Error(`Failed to fetch ${path}`);
-                    zip.file(path, await res.blob());
-                }
+                for (let i = 0; i < total; i += CONFIG.chunkSize) {
+                    const chunk = paths.slice(i, i + CONFIG.chunkSize);
+                    const zip = new JSZip();
+                    const partNum = Math.floor(i / CONFIG.chunkSize) + 1;
+                    const totalParts = Math.ceil(total / CONFIG.chunkSize);
 
-                DOM.downloadBtn.textContent = 'Generating ZIP...';
-                const content = await zip.generateAsync({ type: 'blob' });
-                
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(content);
-                link.download = 'Archive.zip';
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                URL.revokeObjectURL(link.href);
+                    for (const path of chunk) {
+                        DOM.downloadBtn.textContent = `Fetching ${++completed}/${total} (Part ${partNum}/${totalParts})...`;
+                        const fileUrl = `./${path.split('/').map(encodeURIComponent).join('/')}`;
+                        
+                        try {
+                            const res = await fetch(fileUrl);
+                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                            zip.file(path, await res.blob());
+                        } catch (e) {
+                            console.warn(`Failed to fetch ${path}:`, e);
+                        }
+                    }
+
+                    DOM.downloadBtn.textContent = `Zipping Part ${partNum}...`;
+                    const content = await zip.generateAsync({ type: 'blob' });
+                    
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(content);
+                    link.download = totalParts > 1 ? `Games_Archive_Part_${partNum}.zip` : `Games_Archive.zip`;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    URL.revokeObjectURL(link.href);
+
+                    // Brief pause to allow the browser to process the download without blocking popups
+                    if (i + CONFIG.chunkSize < total) {
+                        DOM.downloadBtn.textContent = `Waiting to start Part ${partNum + 1}...`;
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                    }
+                }
 
                 toggleSelectMode();
 
