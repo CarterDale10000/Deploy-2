@@ -27,7 +27,6 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 30px 20px 100px;
-            transition: background-color 0.3s;
         }
 
         a[href*="netlify.com"], 
@@ -259,7 +258,8 @@
             games: [],
             selectedPaths: new Set(),
             searchQuery: '',
-            isSelectMode: false
+            isSelectMode: false,
+            rawTree: []
         };
 
         const DOM = {
@@ -288,18 +288,8 @@
             renderGames();
         }
 
-        function formatGameName(path) {
-            const parts = path.split('/');
-            let filename = parts.pop();
-            let name = filename.replace(/\.(html|htm)$/i, '');
-            
-            const genericNames = ['index', 'game', 'main', 'play', 'default'];
-            if (genericNames.includes(name.toLowerCase()) && parts.length > 0) {
-                name = parts[parts.length - 1];
-            }
-
-            // Still remove "12m" from the display name to keep it clean, 
-            // but this no longer prevents the file from loading.
+        function formatGameName(gameObj) {
+            let name = gameObj.folderName || gameObj.filename.replace(/\.(html|htm)$/i, '');
             name = name.replace(/12m/gi, '');
 
             const lower = name.toLowerCase();
@@ -327,8 +317,8 @@
             }
         }
 
-        function toggleSelection(path, isChecked) {
-            isChecked ? state.selectedPaths.add(path) : state.selectedPaths.delete(path);
+        function toggleSelection(folderOrPath, isChecked) {
+            isChecked ? state.selectedPaths.add(folderOrPath) : state.selectedPaths.delete(folderOrPath);
             updateDownloadUI();
         }
 
@@ -365,32 +355,32 @@
             
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.dataset.path = game.path;
-            checkbox.checked = state.selectedPaths.has(game.path);
-            checkbox.id = `${isRecent ? 'recent' : 'all'}-${game.path}`;
+            checkbox.dataset.path = game.id;
+            checkbox.checked = state.selectedPaths.has(game.id);
+            checkbox.id = `${isRecent ? 'recent' : 'all'}-${game.id}`;
             
             li.addEventListener('click', (e) => {
                 if (state.isSelectMode) {
                     if (e.target !== checkbox) {
                         checkbox.checked = !checkbox.checked;
-                        toggleSelection(game.path, checkbox.checked);
+                        toggleSelection(game.id, checkbox.checked);
                     }
                 }
             });
 
-            checkbox.addEventListener('change', e => toggleSelection(game.path, e.target.checked));
+            checkbox.addEventListener('change', e => toggleSelection(game.id, e.target.checked));
             checkboxWrapper.appendChild(checkbox);
 
             const a = document.createElement('a');
             a.className = 'game-link';
-            a.href = `./${game.path.split('/').map(encodeURIComponent).join('/')}`;
+            a.href = `./${game.entryPath.split('/').map(encodeURIComponent).join('/')}`;
             a.textContent = game.name;
             
             a.addEventListener('click', (e) => {
                 if (state.isSelectMode) {
                     e.preventDefault();
                 } else {
-                    saveRecentGame(game.path);
+                    saveRecentGame(game.id);
                 }
             });
 
@@ -409,8 +399,8 @@
             
             if (!isSearching && recentPaths.length > 0) {
                 DOM.recentLabel.classList.remove('hidden');
-                recentPaths.forEach(path => {
-                    const game = state.games.find(g => g.path === path);
+                recentPaths.forEach(id => {
+                    const game = state.games.find(g => g.id === id);
                     if (game) DOM.recentList.appendChild(createGameElement(game, true));
                 });
             } else {
@@ -419,7 +409,7 @@
 
             let visibleCount = 0;
             state.games.forEach(game => {
-                if (game.name.toLowerCase().includes(query) || game.path.toLowerCase().includes(query)) {
+                if (game.name.toLowerCase().includes(query) || game.id.toLowerCase().includes(query)) {
                     DOM.allList.appendChild(createGameElement(game));
                     visibleCount++;
                 }
@@ -431,52 +421,99 @@
         }
 
         async function fetchGamesList() {
-            const CACHE_KEY = 'github_tree_cache_v4'; // Bumped cache key
-            const CACHE_TIME_KEY = 'github_tree_cache_time_v4';
-            const CACHE_TTL = 1000 * 60 * 60 * 24; 
-
             try {
-                const now = Date.now();
-                const cachedData = localStorage.getItem(CACHE_KEY);
-                const cachedTime = localStorage.getItem(CACHE_TIME_KEY);
-                let data;
-
-                if (cachedData && cachedTime && (now - parseInt(cachedTime)) < CACHE_TTL) {
-                    data = JSON.parse(cachedData);
-                } else {
-                    DOM.allList.innerHTML = `<li style="justify-content: center; color: var(--text-muted);">Fetching game directory...</li>`;
-                    const res = await fetch(CONFIG.apiUrl());
-                    if (!res.ok) throw new Error(res.status === 403 ? 'GitHub API rate limit reached. Try again later or clear cache.' : `HTTP ${res.status}`);
-                    data = await res.json();
-                    
-                    try {
-                        localStorage.setItem(CACHE_KEY, JSON.stringify(data));
-                        localStorage.setItem(CACHE_TIME_KEY, now.toString());
-                    } catch (e) {
-                        console.warn('Local storage full, skipping cache save.');
-                    }
-                }
-
-                state.games = data.tree
-                    .filter(item => {
-                        if (item.type !== 'blob') return false;
-                        
-                        const pathLower = item.path.toLowerCase();
-                        if (!pathLower.endsWith('.html') && !pathLower.endsWith('.htm')) return false;
-                        
-                        const pathParts = pathLower.split('/');
-                        const filename = pathParts.pop();
-
-                        if (pathParts.includes('inline-tools')) return false;
-                        if (CONFIG.excludedFiles.has(filename)) return false;
-
-                        // Include all HTML files not explicitly excluded above
-                        return true;
-                    })
-                    .map(item => ({ path: item.path, name: formatGameName(item.path) }))
-                    .sort((a, b) => a.name.localeCompare(b.name));
+                const res = await fetch(CONFIG.apiUrl());
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
                 
+                state.rawTree = data.tree || [];
+                const gamesMap = new Map();
+
+                state.rawTree.forEach(item => {
+                    if (item.type !== 'blob') return;
+
+                    const pathLower = item.path.toLowerCase();
+                    const parts = item.path.split('/');
+                    
+                    if (parts.length > 0 && parts[0].toLowerCase() === 'inline-tools') return;
+
+                    const isOfflineDir = parts.length > 1 && parts[0].toLowerCase() === 'offline';
+                    
+                    if (isOfflineDir) {
+                        const filename = parts[parts.length - 1];
+                        if (CONFIG.excludedFiles.has(filename.toLowerCase())) return;
+
+                        if (parts.length === 2) {
+                            // Single HTML file in /offline/
+                            if (!filename.toLowerCase().endsWith('.html') && !filename.toLowerCase().endsWith('.htm')) return;
+                            if (!filename.toLowerCase().includes('12m')) return;
+
+                            gamesMap.set(item.path, {
+                                id: item.path,
+                                isFolder: false,
+                                entryPath: item.path,
+                                filename: filename,
+                                folderName: null,
+                                files: [item.path]
+                            });
+                        } else {
+                            // Subfolder game in /offline/folder/
+                            const folderName = parts[1];
+                            if (!folderName.toLowerCase().includes('12m')) return;
+
+                            const gameKey = `offline/${folderName}`;
+                            let gameObj = gamesMap.get(gameKey);
+
+                            if (!gameObj) {
+                                gameObj = {
+                                    id: gameKey,
+                                    isFolder: true,
+                                    entryPath: '',
+                                    filename: '',
+                                    folderName: folderName,
+                                    files: []
+                                };
+                                gamesMap.set(gameKey, gameObj);
+                            }
+
+                            gameObj.files.push(item.path);
+
+                            if (filename.toLowerCase() === 'index.html' || filename.toLowerCase() === 'index.htm' || !gameObj.entryPath) {
+                                if (filename.toLowerCase().endsWith('.html') || filename.toLowerCase().endsWith('.htm')) {
+                                    gameObj.entryPath = item.path;
+                                    gameObj.filename = filename;
+                                }
+                            }
+                        }
+                    } else {
+                        // Root or other non-offline files
+                        if (parts.length === 1) {
+                            const filename = parts[0];
+                            if (!filename.toLowerCase().endsWith('.html') && !filename.toLowerCase().endsWith('.htm')) return;
+                            if (CONFIG.excludedFiles.has(filename.toLowerCase())) return;
+
+                            gamesMap.set(item.path, {
+                                id: item.path,
+                                isFolder: false,
+                                entryPath: item.path,
+                                filename: filename,
+                                folderName: null,
+                                files: [item.path]
+                            });
+                        }
+                    }
+                });
+
+                state.games = Array.from(gamesMap.values())
+                    .filter(g => g.entryPath !== '')
+                    .map(g => ({
+                        ...g,
+                        name: formatGameName(g)
+                    }))
+                    .sort((a, b) => a.name.localeCompare(b.name));
+
                 renderGames();
+
             } catch (err) {
                 DOM.allList.innerHTML = `<li class="error-msg">Failed to load directory: ${err.message}</li>`;
             }
@@ -485,30 +522,39 @@
         async function executeDownload() {
             if (state.selectedPaths.size === 0) return;
 
-            const paths = Array.from(state.selectedPaths);
-            const total = paths.length;
+            const selectedGames = state.games.filter(g => state.selectedPaths.has(g.id));
+            let allFilesToDownload = [];
+
+            selectedGames.forEach(g => {
+                g.files.forEach(filePath => {
+                    allFilesToDownload.push({
+                        zipPath: filePath,
+                        fetchUrl: `./${filePath.split('/').map(encodeURIComponent).join('/')}`
+                    });
+                });
+            });
+
+            const totalFiles = allFilesToDownload.length;
             let completed = 0;
             
             DOM.downloadBtn.disabled = true;
             DOM.selectAllBtn.disabled = true;
 
             try {
-                for (let i = 0; i < total; i += CONFIG.chunkSize) {
-                    const chunk = paths.slice(i, i + CONFIG.chunkSize);
+                for (let i = 0; i < totalFiles; i += CONFIG.chunkSize) {
+                    const chunk = allFilesToDownload.slice(i, i + CONFIG.chunkSize);
                     const zip = new JSZip();
                     const partNum = Math.floor(i / CONFIG.chunkSize) + 1;
-                    const totalParts = Math.ceil(total / CONFIG.chunkSize);
+                    const totalParts = Math.ceil(totalFiles / CONFIG.chunkSize);
 
-                    for (const path of chunk) {
-                        DOM.downloadBtn.textContent = `Fetching ${++completed}/${total} (Part ${partNum}/${totalParts})...`;
-                        const fileUrl = `./${path.split('/').map(encodeURIComponent).join('/')}`;
-                        
+                    for (const item of chunk) {
+                        DOM.downloadBtn.textContent = `Fetching ${++completed}/${totalFiles} (Part ${partNum}/${totalParts})...`;
                         try {
-                            const res = await fetch(fileUrl);
+                            const res = await fetch(item.fetchUrl);
                             if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                            zip.file(path, await res.blob());
+                            zip.file(item.zipPath, await res.blob());
                         } catch (e) {
-                            console.warn(`Failed to fetch ${path}:`, e);
+                            console.warn(`Failed to fetch ${item.fetchUrl}:`, e);
                         }
                     }
 
@@ -523,7 +569,7 @@
                     link.remove();
                     URL.revokeObjectURL(link.href);
 
-                    if (i + CONFIG.chunkSize < total) {
+                    if (i + CONFIG.chunkSize < totalFiles) {
                         DOM.downloadBtn.textContent = `Waiting to start Part ${partNum + 1}...`;
                         await new Promise(resolve => setTimeout(resolve, 1500));
                     }
