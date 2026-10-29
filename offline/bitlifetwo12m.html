@@ -1,68 +1,17 @@
 <!DOCTYPE html>
-<html lang="en-us">
+<html>
 <head>
-    <meta charset="utf-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>BitLife - Life Simulator</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #333;
-            font-family: "Myriad Pro", Myriad, "Helvetica Neue", Helvetica, Arial, sans-serif;
-        }
-        .webgl-content {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            background: #333;
-        }
-        #gameContainer {
-            width: 100%;
-            height: 100%;
-        }
-        canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-        #loadingBlock {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #fff;
-            font-size: 24px;
-            text-align: center;
-        }
-    </style>
-    <!-- Core Engine Scripts -->
-    <script src="https://jsdelivr.net"></script>
-    <script>
-        var gameInstance = UnityLoader.instantiate("gameContainer", "https://jsdelivr.net", {onProgress: UnityProgress});
-        
-        function UnityProgress(gameInstance, progress) {
-            if (!gameInstance.Module) return;
-            var loadingBlock = document.getElementById("loadingBlock");
-            if (progress === 1) {
-                loadingBlock.style.display = "none";
-            } else {
-                loadingBlock.innerHTML = "Loading BitLife... " + Math.round(progress * 100) + "%";
-            }
-        }
-    </script>
+<title>Bitlife</title>
+<link rel="shortcut icon" href="bitlife.png"/>
+<script src='/everypage.js'></script>
 </head>
-<body>
-
-    <div class="webgl-content">
-        <div id="loadingBlock">Loading BitLife... 0%</div>
-        <div id="gameContainer"></div>
-    </div>
-
+<body onload='focus()'>
+<a href=".." style='font-size: 1.5rem;'>Back To Home Page</a>
+<button onclick="openFullscreen('518929564')" style='font-size: 1.5rem;'>Fullscreen Mode</button>
+<iframe style='height: calc(100vh - 1.5rem); width: calc(100vw - 2rem);' allow="fullscreen" allowfullscreen scrolling="no" frameborder="0" id="main" allowtransparency="true" 
+        src="../g/bitlife/index.html"></iframe>
+<script src="fullScreen.js"></script>
+<script src="load.js"></script>
+<script>function focus() {document.getElementById('518929564').focus();}</script>
 </body>
 </html>
