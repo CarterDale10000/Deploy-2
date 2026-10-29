@@ -290,13 +290,16 @@
 
         function formatGameName(path) {
             const parts = path.split('/');
-            let name = parts.pop().replace(/\.(html|htm)$/i, '');
+            let filename = parts.pop();
+            let name = filename.replace(/\.(html|htm)$/i, '');
             
-            if (['index', 'game', 'main', 'play', 'default'].includes(name.toLowerCase()) && parts.length > 0) {
-                name = parts.pop();
+            const genericNames = ['index', 'game', 'main', 'play', 'default'];
+            if (genericNames.includes(name.toLowerCase()) && parts.length > 0) {
+                name = parts[parts.length - 1];
             }
 
-            // Strips "12m" or "12M" out of the name entirely
+            // Still remove "12m" from the display name to keep it clean, 
+            // but this no longer prevents the file from loading.
             name = name.replace(/12m/gi, '');
 
             const lower = name.toLowerCase();
@@ -428,9 +431,8 @@
         }
 
         async function fetchGamesList() {
-            // Versioned cache keys to force a fresh fetch and clear out bad states
-            const CACHE_KEY = 'github_tree_cache_v2';
-            const CACHE_TIME_KEY = 'github_tree_cache_time_v2';
+            const CACHE_KEY = 'github_tree_cache_v4'; // Bumped cache key
+            const CACHE_TIME_KEY = 'github_tree_cache_time_v4';
             const CACHE_TTL = 1000 * 60 * 60 * 24; 
 
             try {
@@ -468,14 +470,8 @@
                         if (pathParts.includes('inline-tools')) return false;
                         if (CONFIG.excludedFiles.has(filename)) return false;
 
-                        // Strict check: if the exact folder 'offline' exists in the path
-                        if (pathParts.includes('offline')) {
-                            if (!filename.includes('12m')) {
-                                return false; // Ignore offline files missing '12m'
-                            }
-                        }
-
-                        return true; // Keep everything else
+                        // Include all HTML files not explicitly excluded above
+                        return true;
                     })
                     .map(item => ({ path: item.path, name: formatGameName(item.path) }))
                     .sort((a, b) => a.name.localeCompare(b.name));
