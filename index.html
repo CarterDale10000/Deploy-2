@@ -252,7 +252,7 @@
             branch: 'master',
             apiUrl: () => `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/git/trees/${CONFIG.branch}?recursive=1`,
             excludedFiles: new Set(['index.html', 'single-file.html', 'file-input.html', 'file-input-minified.html', 'epicviewer.htm', 'readme.md', 'license', '404.html']),
-            chunkSize: 20 // Number of games per ZIP file
+            chunkSize: 20
         };
 
         const state = {
@@ -296,8 +296,8 @@
                 name = parts.pop();
             }
 
-            // Remove the 12M tag (case-insensitive) from the name
-            name = name.replace(/12M/gi, '');
+            // Strips "12m" or "12M" out of the name entirely
+            name = name.replace(/12m/gi, '');
 
             const lower = name.toLowerCase();
             const overrides = { 'sm64': 'Super Mario 64', 'fnaf': "Five Nights at Freddy's", 'pvz': 'Plants vs Zombies' };
@@ -309,7 +309,6 @@
                 return `Minecraft ${lower}`;
             }
 
-            // Clean up any double spaces, underscores, or hyphens left behind after removing 12M
             return name.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, c => c.toUpperCase());
         }
 
@@ -429,9 +428,10 @@
         }
 
         async function fetchGamesList() {
-            const CACHE_KEY = 'github_tree_cache';
-            const CACHE_TIME_KEY = 'github_tree_cache_time';
-            const CACHE_TTL = 1000 * 60 * 60 * 24; // 24 hours
+            // Versioned cache keys to force a fresh fetch and clear out bad states
+            const CACHE_KEY = 'github_tree_cache_v2';
+            const CACHE_TIME_KEY = 'github_tree_cache_time_v2';
+            const CACHE_TTL = 1000 * 60 * 60 * 24; 
 
             try {
                 const now = Date.now();
@@ -458,21 +458,24 @@
                 state.games = data.tree
                     .filter(item => {
                         if (item.type !== 'blob') return false;
+                        
                         const pathLower = item.path.toLowerCase();
                         if (!pathLower.endsWith('.html') && !pathLower.endsWith('.htm')) return false;
-                        if (pathLower.includes('inline-tools/')) return false;
                         
-                        const filename = pathLower.split('/').pop();
+                        const pathParts = pathLower.split('/');
+                        const filename = pathParts.pop();
+
+                        if (pathParts.includes('inline-tools')) return false;
                         if (CONFIG.excludedFiles.has(filename)) return false;
 
-                        // Check OFFLINE directory rule
-                        if (pathLower.includes('offline/')) {
+                        // Strict check: if the exact folder 'offline' exists in the path
+                        if (pathParts.includes('offline')) {
                             if (!filename.includes('12m')) {
-                                return false; // Exclude OFFLINE files that don't have '12m' in the name
+                                return false; // Ignore offline files missing '12m'
                             }
                         }
 
-                        return true;
+                        return true; // Keep everything else
                     })
                     .map(item => ({ path: item.path, name: formatGameName(item.path) }))
                     .sort((a, b) => a.name.localeCompare(b.name));
