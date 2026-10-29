@@ -296,6 +296,9 @@
                 name = parts.pop();
             }
 
+            // Remove the 12M tag (case-insensitive) from the name
+            name = name.replace(/12M/gi, '');
+
             const lower = name.toLowerCase();
             const overrides = { 'sm64': 'Super Mario 64', 'fnaf': "Five Nights at Freddy's", 'pvz': 'Plants vs Zombies' };
             if (overrides[lower]) return overrides[lower];
@@ -306,7 +309,8 @@
                 return `Minecraft ${lower}`;
             }
 
-            return name.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+            // Clean up any double spaces, underscores, or hyphens left behind after removing 12M
+            return name.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, c => c.toUpperCase());
         }
 
         function updateDownloadUI() {
@@ -457,8 +461,18 @@
                         const pathLower = item.path.toLowerCase();
                         if (!pathLower.endsWith('.html') && !pathLower.endsWith('.htm')) return false;
                         if (pathLower.includes('inline-tools/')) return false;
+                        
                         const filename = pathLower.split('/').pop();
-                        return !CONFIG.excludedFiles.has(filename);
+                        if (CONFIG.excludedFiles.has(filename)) return false;
+
+                        // Check OFFLINE directory rule
+                        if (pathLower.includes('offline/')) {
+                            if (!filename.includes('12m')) {
+                                return false; // Exclude OFFLINE files that don't have '12m' in the name
+                            }
+                        }
+
+                        return true;
                     })
                     .map(item => ({ path: item.path, name: formatGameName(item.path) }))
                     .sort((a, b) => a.name.localeCompare(b.name));
@@ -510,7 +524,6 @@
                     link.remove();
                     URL.revokeObjectURL(link.href);
 
-                    // Brief pause to allow the browser to process the download without blocking popups
                     if (i + CONFIG.chunkSize < total) {
                         DOM.downloadBtn.textContent = `Waiting to start Part ${partNum + 1}...`;
                         await new Promise(resolve => setTimeout(resolve, 1500));
