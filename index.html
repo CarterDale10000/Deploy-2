@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Directory Dashboard</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><circle cx='128' cy='128' r='128' fill='%23e43a3c'/><circle cx='128' cy='128' r='70' fill='none' stroke='white' stroke-width='24' stroke-dasharray='30 20'/><circle cx='128' cy='128' r='30' fill='white'/></svg>">
+    <!-- Using a robust CDN for JSZip -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
@@ -30,6 +31,7 @@
             transition: background-color 0.3s;
         }
 
+        /* Enforce stealth mode on Netlify injected elements */
         a[href*="netlify.com"], 
         #netlify-logo, 
         .netlify-badge {
@@ -233,7 +235,7 @@
 
     <div class="header-controls">
         <input type="text" id="searchInput" placeholder="Search games...">
-        <button class="btn-tiny" id="toggleModeBtn">
+        <button class="btn-tiny" id="toggleModeBtn" aria-label="Toggle Selection Mode">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="9 11 12 14 22 4"></polyline>
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
@@ -261,8 +263,11 @@
             repo: 'Deploy-2',
             branch: 'master',
             apiUrl: () => `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/git/trees/${CONFIG.branch}?recursive=1`,
-            excludedFiles: new Set(['index.html', 'single-file.html', 'file-input.html', 'file-input-minified.html', 'epicviewer.htm', 'readme.md', 'license', '404.html']),
-            gamesPerZip: 10 // Safe batch limit for Chromebooks
+            // Exclude common root-level dashboard components. 
+            // Note: We don't exclude index.html globally anymore to allow folder games to work.
+            excludedRootFiles: new Set(['single-file.html', 'file-input.html', 'file-input-minified.html', 'epicviewer.htm', 'readme.md', 'license', '404.html']),
+            gamesPerZip: 5, // Dropped to 5 to protect memory limits during massive Unity WASM zips
+            concurrentDownloads: 5 // How many assets to fetch in parallel per game
         };
 
         const state = {
@@ -305,24 +310,40 @@
             let filename = parts.pop();
             let name = filename.replace(/\.(html|htm)$/i, '');
             
+            // If the file is generic (e.g. index.html), inherit the name from the parent folder
             const genericNames = ['index', 'game', 'main', 'play', 'default'];
             if (genericNames.includes(name.toLowerCase()) && parts.length > 0) {
-                name = parts[parts.length - 1]; // Use parent folder name
+                name = parts[parts.length - 1];
             }
 
+            // Strip the 12m compliance tag out of the UI presentation
             name = name.replace(/12m/gi, '');
 
             const lower = name.toLowerCase();
-            const overrides = { 'sm64': 'Super Mario 64', 'fnaf': "Five Nights at Freddy's", 'pvz': 'Plants vs Zombies' };
+            const overrides = { 
+                'sm64': 'Super Mario 64', 
+                'fnaf': "Five Nights at Freddy's", 
+                'pvz': 'Plants vs Zombies',
+                'bitlifetwo': 'BitLife',
+                'bitlife': 'BitLife'
+            };
+            
             if (overrides[lower]) return overrides[lower];
 
+            // Minecraft Version Formatting
             if (/^(a|b)?\d+(\.\d+)+$/.test(lower)) {
                 if (lower.startsWith('b')) return `Minecraft Beta ${lower.substring(1)}`;
                 if (lower.startsWith('a')) return `Minecraft Alpha ${lower.substring(1)}`;
                 return `Minecraft ${lower}`;
             }
 
-            return name.replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/\b\w/g, c => c.toUpperCase());
+            // Cleanup string (spaces, casing)
+            return name
+                .replace(/([a-z])([A-Z])/g, '$1 $2') // Convert CamelCase to spaced
+                .replace(/[-_]+/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim()
+                .replace(/\b\w/g, c => c.toUpperCase());
         }
 
         function updateDownloadUI() {
@@ -441,12 +462,13 @@
         function processTreeData(treeData) {
             state.fullTree = treeData;
             
-            // Build a registry of folders that contain an index.html so we can hide redundant HTML files
+            // Build a strict mapping of folders containing an index file to prevent duplicate listings
             const foldersWithIndex = new Set();
             treeData.forEach(item => {
-                if (item.type === 'blob' && item.path.toLowerCase().endsWith('index.html')) {
-                    const parentFolder = item.path.substring(0, item.path.lastIndexOf('/'));
-                    foldersWithIndex.add(parentFolder);
+                const lowerPath = item.path.toLowerCase();
+                if (item.type === 'blob' && (lowerPath.endsWith('/index.html') || lowerPath.endsWith('/index.htm'))) {
+                    const parentFolderLower = lowerPath.substring(0, lowerPath.lastIndexOf('/'));
+                    foldersWithIndex.add(parentFolderLower);
                 }
             });
 
@@ -461,17 +483,22 @@
                     const filename = pathParts.pop();
 
                     if (pathParts.includes('inline-tools')) return false;
-                    if (CONFIG.excludedFiles.has(filename)) return false;
 
-                    // 12M OFFLINE RULE: Any file or folder path containing 'offline' MUST also contain '12m'
-                    if (pathParts.includes('offline')) {
+                    // ROOT FILE FILTERING (Block root index.html, allow folder index.html)
+                    if (pathParts.length === 0 && (filename.toLowerCase() === 'index.html' || CONFIG.excludedRootFiles.has(filename.toLowerCase()))) {
+                        return false; 
+                    }
+
+                    // 12M OFFLINE COMPLIANCE RULE
+                    if (pathParts.includes('offline') || pathParts.includes('offline-games')) {
                         if (!pathLower.includes('12m')) return false;
                     }
 
-                    // SMART INDEXING: If this is a folder game with an index.html, ignore secondary HTML files (like credits.html)
-                    const isIndexFile = (filename === 'index.html' || filename === 'index.htm');
-                    const parentFolder = pathParts.join('/');
-                    if (!isIndexFile && foldersWithIndex.has(parentFolder)) {
+                    // SMART INDEXING (Hide redundant inner-folder HTML files like credits.html if index.html exists)
+                    const isIndexFile = (filename.toLowerCase() === 'index.html' || filename.toLowerCase() === 'index.htm');
+                    const parentFolderLower = pathParts.join('/').toLowerCase();
+                    
+                    if (!isIndexFile && foldersWithIndex.has(parentFolderLower)) {
                         return false; 
                     }
 
@@ -484,7 +511,7 @@
         }
 
         async function fetchGamesList() {
-            const CACHE_KEY = 'github_tree_cache_v6'; // Forced invalidation
+            const CACHE_KEY = 'github_tree_cache_v8'; // V8 Force Flush
             
             const cachedData = localStorage.getItem(CACHE_KEY);
             if (cachedData) {
@@ -528,25 +555,50 @@
             }
         }
 
-        // Analyzes a selected HTML file to determine if we should download the whole folder (for WASM/JS games)
+        // Extremely robust deep-folder asset discovery (Finds nested Unity Build/ WASMs)
         function getGameAssets(htmlPath) {
             const parts = htmlPath.split('/');
             
-            // Check if it's a standalone file (e.g., 'root_game.html' or 'offline/standalone_game.html')
+            // Check if it's sitting naked at the root, or directly inside the base offline folder
             let isStandalone = false;
             if (parts.length === 1) isStandalone = true;
-            else if (parts.length === 2 && parts[0].toLowerCase() === 'offline') isStandalone = true;
+            else if (parts.length === 2 && (parts[0].toLowerCase() === 'offline' || parts[0].toLowerCase() === 'offline-games')) isStandalone = true;
 
             if (isStandalone) {
                 return [htmlPath];
             } else {
-                // It's a folder game. Grab ALL files in that parent directory so WASM assets work offline.
-                parts.pop(); 
+                parts.pop(); // Remove the index.html from path
                 const folderPrefix = parts.join('/') + '/';
+                
+                // Return EVERYTHING in the repo that shares this parent directory path
                 return state.fullTree
                     .filter(item => item.type === 'blob' && item.path.startsWith(folderPrefix))
                     .map(item => item.path);
             }
+        }
+
+        // Fetch binary data with automatic retry for stability
+        async function fetchFileWithRetry(url, retries = 3) {
+            for (let i = 0; i < retries; i++) {
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return await response.blob(); 
+                } catch (e) {
+                    if (i === retries - 1) throw e;
+                    await new Promise(res => setTimeout(res, 1000)); // Wait 1s before retry
+                }
+            }
+        }
+
+        // Process an array of promises in chunks to prevent network blocking
+        async function processInChunks(items, chunk_size, processFn) {
+            let results = [];
+            for (let i = 0; i < items.length; i += chunk_size) {
+                const chunk = items.slice(i, i + chunk_size);
+                results.push(...await Promise.all(chunk.map(processFn)));
+            }
+            return results;
         }
 
         async function executeDownload() {
@@ -568,25 +620,30 @@
 
                     for (const gameHtmlPath of chunk) {
                         gamesProcessed++;
-                        DOM.downloadBtn.textContent = `Gathering Game ${gamesProcessed}/${totalGames}...`;
+                        const gameName = formatGameName(gameHtmlPath);
+                        DOM.downloadBtn.textContent = `Gathering ${gameName} (${gamesProcessed}/${totalGames})...`;
                         
-                        // Discover all necessary assets for this specific game
+                        // Crawl dependency tree for Unity/WASM components
                         const assetsToDownload = getGameAssets(gameHtmlPath);
                         
-                        for (const assetPath of assetsToDownload) {
+                        // Fetch the assets in concurrent chunks for speed without overload
+                        await processInChunks(assetsToDownload, CONFIG.concurrentDownloads, async (assetPath) => {
                             const fileUrl = `./${assetPath.split('/').map(encodeURIComponent).join('/')}`;
                             try {
-                                const res = await fetch(fileUrl);
-                                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                                zip.file(assetPath, await res.blob());
+                                const blob = await fetchFileWithRetry(fileUrl);
+                                // Maintain full directory architecture inside the ZIP
+                                zip.file(assetPath, blob);
                             } catch (e) {
-                                console.warn(`Failed to fetch asset ${assetPath}:`, e);
+                                console.warn(`Asset Skipped [${assetPath}]:`, e);
                             }
-                        }
+                        });
                     }
 
-                    DOM.downloadBtn.textContent = `Zipping Part ${partNum}...`;
-                    const content = await zip.generateAsync({ type: 'blob' });
+                    DOM.downloadBtn.textContent = `Compressing Part ${partNum}... (May take a moment)`;
+                    const content = await zip.generateAsync({ 
+                        type: 'blob', 
+                        compression: "STORE" // Store instead of DEFLATE to prevent RAM crashing on already-compressed WASM files
+                    });
                     
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(content);
@@ -605,7 +662,7 @@
                 toggleSelectMode();
 
             } catch (err) {
-                alert(`Download error: ${err.message}`);
+                alert(`Download interrupted: ${err.message}. Try downloading fewer games at once.`);
                 console.error(err);
             } finally {
                 updateDownloadUI();
@@ -627,7 +684,7 @@
         DOM.selectAllBtn.addEventListener('click', handleSelectAll);
         DOM.downloadBtn.addEventListener('click', executeDownload);
 
-        // Init
+        // Boot
         fetchGamesList();
     </script>
 </body>
