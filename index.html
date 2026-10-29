@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
+    <title>Directory Dashboard</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><circle cx='128' cy='128' r='128' fill='%23e43a3c'/><circle cx='128' cy='128' r='70' fill='none' stroke='white' stroke-width='24' stroke-dasharray='30 20'/><circle cx='128' cy='128' r='30' fill='white'/></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
@@ -27,6 +27,7 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 30px 20px 100px;
+            transition: background-color 0.3s;
         }
 
         a[href*="netlify.com"], 
@@ -218,12 +219,20 @@
             padding: 16px;
             border-radius: 8px;
         }
+        
+        .sync-status {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-align: right;
+            margin-top: 4px;
+            height: 16px;
+        }
     </style>
 </head>
 <body>
 
     <div class="header-controls">
-        <input type="text" id="searchInput" placeholder="Search...">
+        <input type="text" id="searchInput" placeholder="Search games...">
         <button class="btn-tiny" id="toggleModeBtn">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="9 11 12 14 22 4"></polyline>
@@ -231,6 +240,8 @@
             </svg>
         </button>
     </div>
+    
+    <div class="sync-status" id="syncStatus"></div>
 
     <div class="section-label hidden" id="recentLabel">Recent</div>
     <ul id="recentList"></ul>
@@ -251,15 +262,15 @@
             branch: 'master',
             apiUrl: () => `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/git/trees/${CONFIG.branch}?recursive=1`,
             excludedFiles: new Set(['index.html', 'single-file.html', 'file-input.html', 'file-input-minified.html', 'epicviewer.htm', 'readme.md', 'license', '404.html']),
-            chunkSize: 20
+            gamesPerZip: 10 // Safe batch limit for Chromebooks
         };
 
         const state = {
+            fullTree: [],
             games: [],
             selectedPaths: new Set(),
             searchQuery: '',
-            isSelectMode: false,
-            rawTree: []
+            isSelectMode: false
         };
 
         const DOM = {
@@ -271,7 +282,8 @@
             allList: document.getElementById('allList'),
             downloadBar: document.getElementById('downloadBar'),
             selectedCount: document.getElementById('selectedCount'),
-            downloadBtn: document.getElementById('downloadBtn')
+            downloadBtn: document.getElementById('downloadBtn'),
+            syncStatus: document.getElementById('syncStatus')
         };
 
         function getRecentGames() {
@@ -288,8 +300,16 @@
             renderGames();
         }
 
-        function formatGameName(gameObj) {
-            let name = gameObj.folderName || gameObj.filename.replace(/\.(html|htm)$/i, '');
+        function formatGameName(path) {
+            const parts = path.split('/');
+            let filename = parts.pop();
+            let name = filename.replace(/\.(html|htm)$/i, '');
+            
+            const genericNames = ['index', 'game', 'main', 'play', 'default'];
+            if (genericNames.includes(name.toLowerCase()) && parts.length > 0) {
+                name = parts[parts.length - 1]; // Use parent folder name
+            }
+
             name = name.replace(/12m/gi, '');
 
             const lower = name.toLowerCase();
@@ -317,8 +337,8 @@
             }
         }
 
-        function toggleSelection(folderOrPath, isChecked) {
-            isChecked ? state.selectedPaths.add(folderOrPath) : state.selectedPaths.delete(folderOrPath);
+        function toggleSelection(path, isChecked) {
+            isChecked ? state.selectedPaths.add(path) : state.selectedPaths.delete(path);
             updateDownloadUI();
         }
 
@@ -355,32 +375,30 @@
             
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.dataset.path = game.id;
-            checkbox.checked = state.selectedPaths.has(game.id);
-            checkbox.id = `${isRecent ? 'recent' : 'all'}-${game.id}`;
+            checkbox.dataset.path = game.path;
+            checkbox.checked = state.selectedPaths.has(game.path);
+            checkbox.id = `${isRecent ? 'recent' : 'all'}-${game.path}`;
             
             li.addEventListener('click', (e) => {
-                if (state.isSelectMode) {
-                    if (e.target !== checkbox) {
-                        checkbox.checked = !checkbox.checked;
-                        toggleSelection(game.id, checkbox.checked);
-                    }
+                if (state.isSelectMode && e.target !== checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    toggleSelection(game.path, checkbox.checked);
                 }
             });
 
-            checkbox.addEventListener('change', e => toggleSelection(game.id, e.target.checked));
+            checkbox.addEventListener('change', e => toggleSelection(game.path, e.target.checked));
             checkboxWrapper.appendChild(checkbox);
 
             const a = document.createElement('a');
             a.className = 'game-link';
-            a.href = `./${game.entryPath.split('/').map(encodeURIComponent).join('/')}`;
+            a.href = `./${game.path.split('/').map(encodeURIComponent).join('/')}`;
             a.textContent = game.name;
             
             a.addEventListener('click', (e) => {
                 if (state.isSelectMode) {
                     e.preventDefault();
                 } else {
-                    saveRecentGame(game.id);
+                    saveRecentGame(game.path);
                 }
             });
 
@@ -399,8 +417,8 @@
             
             if (!isSearching && recentPaths.length > 0) {
                 DOM.recentLabel.classList.remove('hidden');
-                recentPaths.forEach(id => {
-                    const game = state.games.find(g => g.id === id);
+                recentPaths.forEach(path => {
+                    const game = state.games.find(g => g.path === path);
                     if (game) DOM.recentList.appendChild(createGameElement(game, true));
                 });
             } else {
@@ -409,7 +427,7 @@
 
             let visibleCount = 0;
             state.games.forEach(game => {
-                if (game.name.toLowerCase().includes(query) || game.id.toLowerCase().includes(query)) {
+                if (game.name.toLowerCase().includes(query) || game.path.toLowerCase().includes(query)) {
                     DOM.allList.appendChild(createGameElement(game));
                     visibleCount++;
                 }
@@ -420,141 +438,150 @@
             DOM.selectAllBtn.textContent = allVisibleSelected && visibleCount > 0 ? 'Deselect All' : 'Select All';
         }
 
+        function processTreeData(treeData) {
+            state.fullTree = treeData;
+            
+            // Build a registry of folders that contain an index.html so we can hide redundant HTML files
+            const foldersWithIndex = new Set();
+            treeData.forEach(item => {
+                if (item.type === 'blob' && item.path.toLowerCase().endsWith('index.html')) {
+                    const parentFolder = item.path.substring(0, item.path.lastIndexOf('/'));
+                    foldersWithIndex.add(parentFolder);
+                }
+            });
+
+            state.games = treeData
+                .filter(item => {
+                    if (item.type !== 'blob') return false;
+                    
+                    const pathLower = item.path.toLowerCase();
+                    if (!pathLower.endsWith('.html') && !pathLower.endsWith('.htm')) return false;
+                    
+                    const pathParts = pathLower.split('/');
+                    const filename = pathParts.pop();
+
+                    if (pathParts.includes('inline-tools')) return false;
+                    if (CONFIG.excludedFiles.has(filename)) return false;
+
+                    // 12M OFFLINE RULE: Any file or folder path containing 'offline' MUST also contain '12m'
+                    if (pathParts.includes('offline')) {
+                        if (!pathLower.includes('12m')) return false;
+                    }
+
+                    // SMART INDEXING: If this is a folder game with an index.html, ignore secondary HTML files (like credits.html)
+                    const isIndexFile = (filename === 'index.html' || filename === 'index.htm');
+                    const parentFolder = pathParts.join('/');
+                    if (!isIndexFile && foldersWithIndex.has(parentFolder)) {
+                        return false; 
+                    }
+
+                    return true;
+                })
+                .map(item => ({ path: item.path, name: formatGameName(item.path) }))
+                .sort((a, b) => a.name.localeCompare(b.name));
+            
+            renderGames();
+        }
+
         async function fetchGamesList() {
+            const CACHE_KEY = 'github_tree_cache_v6'; // Forced invalidation
+            
+            const cachedData = localStorage.getItem(CACHE_KEY);
+            if (cachedData) {
+                try {
+                    processTreeData(JSON.parse(cachedData).tree);
+                    DOM.syncStatus.textContent = "Loading updates in background...";
+                } catch (e) {
+                    console.warn("Cache parse failed, resetting.");
+                }
+            } else {
+                DOM.allList.innerHTML = `<li style="justify-content: center; color: var(--text-muted);">Fetching game directory...</li>`;
+            }
+
             try {
-                const res = await fetch(CONFIG.apiUrl());
+                const res = await fetch(CONFIG.apiUrl(), {
+                    headers: { 'Accept': 'application/vnd.github.v3+json' }
+                });
+                
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 
-                state.rawTree = data.tree || [];
-                const gamesMap = new Map();
+                const newDataString = JSON.stringify(data.tree);
+                const oldDataString = cachedData ? JSON.stringify(JSON.parse(cachedData).tree) : null;
 
-                state.rawTree.forEach(item => {
-                    if (item.type !== 'blob') return;
-
-                    const pathLower = item.path.toLowerCase();
-                    const parts = item.path.split('/');
-                    
-                    if (parts.length > 0 && parts[0].toLowerCase() === 'inline-tools') return;
-
-                    const isOfflineDir = parts.length > 1 && parts[0].toLowerCase() === 'offline';
-                    
-                    if (isOfflineDir) {
-                        const filename = parts[parts.length - 1];
-                        if (CONFIG.excludedFiles.has(filename.toLowerCase())) return;
-
-                        if (parts.length === 2) {
-                            // Single HTML file in /offline/
-                            if (!filename.toLowerCase().endsWith('.html') && !filename.toLowerCase().endsWith('.htm')) return;
-                            if (!filename.toLowerCase().includes('12m')) return;
-
-                            gamesMap.set(item.path, {
-                                id: item.path,
-                                isFolder: false,
-                                entryPath: item.path,
-                                filename: filename,
-                                folderName: null,
-                                files: [item.path]
-                            });
-                        } else {
-                            // Subfolder game in /offline/folder/
-                            const folderName = parts[1];
-                            if (!folderName.toLowerCase().includes('12m')) return;
-
-                            const gameKey = `offline/${folderName}`;
-                            let gameObj = gamesMap.get(gameKey);
-
-                            if (!gameObj) {
-                                gameObj = {
-                                    id: gameKey,
-                                    isFolder: true,
-                                    entryPath: '',
-                                    filename: '',
-                                    folderName: folderName,
-                                    files: []
-                                };
-                                gamesMap.set(gameKey, gameObj);
-                            }
-
-                            gameObj.files.push(item.path);
-
-                            if (filename.toLowerCase() === 'index.html' || filename.toLowerCase() === 'index.htm' || !gameObj.entryPath) {
-                                if (filename.toLowerCase().endsWith('.html') || filename.toLowerCase().endsWith('.htm')) {
-                                    gameObj.entryPath = item.path;
-                                    gameObj.filename = filename;
-                                }
-                            }
-                        }
-                    } else {
-                        // Root or other non-offline files
-                        if (parts.length === 1) {
-                            const filename = parts[0];
-                            if (!filename.toLowerCase().endsWith('.html') && !filename.toLowerCase().endsWith('.htm')) return;
-                            if (CONFIG.excludedFiles.has(filename.toLowerCase())) return;
-
-                            gamesMap.set(item.path, {
-                                id: item.path,
-                                isFolder: false,
-                                entryPath: item.path,
-                                filename: filename,
-                                folderName: null,
-                                files: [item.path]
-                            });
-                        }
-                    }
-                });
-
-                state.games = Array.from(gamesMap.values())
-                    .filter(g => g.entryPath !== '')
-                    .map(g => ({
-                        ...g,
-                        name: formatGameName(g)
-                    }))
-                    .sort((a, b) => a.name.localeCompare(b.name));
-
-                renderGames();
+                if (newDataString !== oldDataString) {
+                    try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch(e) {}
+                    processTreeData(data.tree);
+                    DOM.syncStatus.textContent = "Directory updated.";
+                } else {
+                    DOM.syncStatus.textContent = "Directory up to date.";
+                }
+                
+                setTimeout(() => DOM.syncStatus.textContent = "", 3000);
 
             } catch (err) {
-                DOM.allList.innerHTML = `<li class="error-msg">Failed to load directory: ${err.message}</li>`;
+                if (!cachedData) {
+                    DOM.allList.innerHTML = `<li class="error-msg">Failed to load directory: ${err.message}. GitHub API limit reached, try again later.</li>`;
+                }
+                DOM.syncStatus.textContent = "Offline mode - using cached list.";
+                setTimeout(() => DOM.syncStatus.textContent = "", 5000);
+            }
+        }
+
+        // Analyzes a selected HTML file to determine if we should download the whole folder (for WASM/JS games)
+        function getGameAssets(htmlPath) {
+            const parts = htmlPath.split('/');
+            
+            // Check if it's a standalone file (e.g., 'root_game.html' or 'offline/standalone_game.html')
+            let isStandalone = false;
+            if (parts.length === 1) isStandalone = true;
+            else if (parts.length === 2 && parts[0].toLowerCase() === 'offline') isStandalone = true;
+
+            if (isStandalone) {
+                return [htmlPath];
+            } else {
+                // It's a folder game. Grab ALL files in that parent directory so WASM assets work offline.
+                parts.pop(); 
+                const folderPrefix = parts.join('/') + '/';
+                return state.fullTree
+                    .filter(item => item.type === 'blob' && item.path.startsWith(folderPrefix))
+                    .map(item => item.path);
             }
         }
 
         async function executeDownload() {
             if (state.selectedPaths.size === 0) return;
 
-            const selectedGames = state.games.filter(g => state.selectedPaths.has(g.id));
-            let allFilesToDownload = [];
-
-            selectedGames.forEach(g => {
-                g.files.forEach(filePath => {
-                    allFilesToDownload.push({
-                        zipPath: filePath,
-                        fetchUrl: `./${filePath.split('/').map(encodeURIComponent).join('/')}`
-                    });
-                });
-            });
-
-            const totalFiles = allFilesToDownload.length;
-            let completed = 0;
+            const selectedGames = Array.from(state.selectedPaths);
+            const totalGames = selectedGames.length;
+            let gamesProcessed = 0;
             
             DOM.downloadBtn.disabled = true;
             DOM.selectAllBtn.disabled = true;
 
             try {
-                for (let i = 0; i < totalFiles; i += CONFIG.chunkSize) {
-                    const chunk = allFilesToDownload.slice(i, i + CONFIG.chunkSize);
+                for (let i = 0; i < totalGames; i += CONFIG.gamesPerZip) {
+                    const chunk = selectedGames.slice(i, i + CONFIG.gamesPerZip);
                     const zip = new JSZip();
-                    const partNum = Math.floor(i / CONFIG.chunkSize) + 1;
-                    const totalParts = Math.ceil(totalFiles / CONFIG.chunkSize);
+                    const partNum = Math.floor(i / CONFIG.gamesPerZip) + 1;
+                    const totalParts = Math.ceil(totalGames / CONFIG.gamesPerZip);
 
-                    for (const item of chunk) {
-                        DOM.downloadBtn.textContent = `Fetching ${++completed}/${totalFiles} (Part ${partNum}/${totalParts})...`;
-                        try {
-                            const res = await fetch(item.fetchUrl);
-                            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                            zip.file(item.zipPath, await res.blob());
-                        } catch (e) {
-                            console.warn(`Failed to fetch ${item.fetchUrl}:`, e);
+                    for (const gameHtmlPath of chunk) {
+                        gamesProcessed++;
+                        DOM.downloadBtn.textContent = `Gathering Game ${gamesProcessed}/${totalGames}...`;
+                        
+                        // Discover all necessary assets for this specific game
+                        const assetsToDownload = getGameAssets(gameHtmlPath);
+                        
+                        for (const assetPath of assetsToDownload) {
+                            const fileUrl = `./${assetPath.split('/').map(encodeURIComponent).join('/')}`;
+                            try {
+                                const res = await fetch(fileUrl);
+                                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                                zip.file(assetPath, await res.blob());
+                            } catch (e) {
+                                console.warn(`Failed to fetch asset ${assetPath}:`, e);
+                            }
                         }
                     }
 
@@ -569,9 +596,9 @@
                     link.remove();
                     URL.revokeObjectURL(link.href);
 
-                    if (i + CONFIG.chunkSize < totalFiles) {
+                    if (i + CONFIG.gamesPerZip < totalGames) {
                         DOM.downloadBtn.textContent = `Waiting to start Part ${partNum + 1}...`;
-                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        await new Promise(resolve => setTimeout(resolve, 2000));
                     }
                 }
 
@@ -600,13 +627,8 @@
         DOM.selectAllBtn.addEventListener('click', handleSelectAll);
         DOM.downloadBtn.addEventListener('click', executeDownload);
 
+        // Init
         fetchGamesList();
-
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./sw.js').catch(() => {});
-            });
-        }
     </script>
 </body>
 </html>
