@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Directory Dashboard</title>
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><circle cx='128' cy='128' r='128' fill='%23e43a3c'/><circle cx='128' cy='128' r='70' fill='none' stroke='white' stroke-width='24' stroke-dasharray='30 20'/><circle cx='128' cy='128' r='30' fill='white'/></svg>">
-    <!-- Using a robust CDN for JSZip -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
@@ -28,10 +27,8 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 30px 20px 100px;
-            transition: background-color 0.3s;
         }
 
-        /* Enforce stealth mode on Netlify injected elements */
         a[href*="netlify.com"], 
         #netlify-logo, 
         .netlify-badge {
@@ -57,8 +54,8 @@
             border: 1px solid #ced4da;
             border-radius: 8px;
             font-size: 1rem;
-            transition: border-color 0.2s, box-shadow 0.2s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            transition: all 0.2s;
         }
 
         input[type="text"]:focus {
@@ -78,9 +75,8 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: all 0.2s;
             flex-shrink: 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
 
         .btn-tiny:hover {
@@ -100,12 +96,9 @@
             margin: 30px 0 15px;
             padding-bottom: 8px;
             border-bottom: 2px solid var(--border);
-            color: var(--text-main);
         }
 
-        .section-label.hidden {
-            display: none;
-        }
+        .section-label.hidden { display: none; }
 
         ul {
             list-style: none;
@@ -124,7 +117,6 @@
             border-radius: 8px;
             border: 1px solid var(--border);
             transition: all 0.2s ease;
-            cursor: default;
         }
 
         li:hover {
@@ -132,9 +124,7 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.04);
         }
 
-        body.select-mode li {
-            cursor: pointer;
-        }
+        body.select-mode li { cursor: pointer; }
 
         .checkbox-wrapper {
             display: none;
@@ -143,9 +133,7 @@
             margin-right: 16px;
         }
 
-        body.select-mode .checkbox-wrapper {
-            display: flex;
-        }
+        body.select-mode .checkbox-wrapper { display: flex; }
 
         input[type="checkbox"] {
             cursor: pointer;
@@ -160,17 +148,10 @@
             font-weight: 500;
             flex-grow: 1;
             font-size: 1.05rem;
-            transition: all 0.2s;
         }
 
-        .game-link:hover {
-            color: var(--primary-hover);
-            text-decoration: underline;
-        }
-
-        body.select-mode .game-link {
-            pointer-events: none;
-        }
+        .game-link:hover { text-decoration: underline; }
+        body.select-mode .game-link { pointer-events: none; }
 
         .download-bar {
             position: fixed;
@@ -186,8 +167,6 @@
             gap: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             z-index: 1000;
-            width: max-content;
-            max-width: 90%;
             transition: opacity 0.3s, transform 0.3s;
         }
 
@@ -203,7 +182,6 @@
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
-            font-size: 0.95rem;
             transition: all 0.2s;
         }
 
@@ -263,11 +241,9 @@
             repo: 'Deploy-2',
             branch: 'master',
             apiUrl: () => `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/git/trees/${CONFIG.branch}?recursive=1`,
-            // Exclude common root-level dashboard components. 
-            // Note: We don't exclude index.html globally anymore to allow folder games to work.
-            excludedRootFiles: new Set(['single-file.html', 'file-input.html', 'file-input-minified.html', 'epicviewer.htm', 'readme.md', 'license', '404.html']),
-            gamesPerZip: 5, // Dropped to 5 to protect memory limits during massive Unity WASM zips
-            concurrentDownloads: 5 // How many assets to fetch in parallel per game
+            excludedRootFiles: new Set(['single-file.html', 'file-input.html', 'epicviewer.htm', 'readme.md', 'license', '404.html', 'index.html']),
+            gamesPerZip: 5,
+            concurrentDownloads: 5
         };
 
         const state = {
@@ -292,7 +268,7 @@
         };
 
         function getRecentGames() {
-            try { return JSON.parse(localStorage.getItem('recentGames')) || []; } 
+            try { return JSON.parse(localStorage.getItem('recentGames_v2')) || []; } 
             catch { return []; }
         }
 
@@ -301,25 +277,16 @@
             let recent = getRecentGames().filter(p => p !== path);
             recent.unshift(path);
             if (recent.length > 10) recent.pop();
-            localStorage.setItem('recentGames', JSON.stringify(recent));
+            localStorage.setItem('recentGames_v2', JSON.stringify(recent));
             renderGames();
         }
 
         function formatGameName(path) {
             const parts = path.split('/');
-            let filename = parts.pop();
-            let name = filename.replace(/\.(html|htm)$/i, '');
+            let name = parts[parts.length - 1].replace(/\.(html|htm)$/i, '');
             
-            // If the file is generic (e.g. index.html), inherit the name from the parent folder
-            const genericNames = ['index', 'game', 'main', 'play', 'default'];
-            if (genericNames.includes(name.toLowerCase()) && parts.length > 0) {
-                name = parts[parts.length - 1];
-            }
-
-            // Strip the 12m compliance tag out of the UI presentation
             name = name.replace(/12m/gi, '');
 
-            const lower = name.toLowerCase();
             const overrides = { 
                 'sm64': 'Super Mario 64', 
                 'fnaf': "Five Nights at Freddy's", 
@@ -328,18 +295,16 @@
                 'bitlife': 'BitLife'
             };
             
-            if (overrides[lower]) return overrides[lower];
+            if (overrides[name.toLowerCase()]) return overrides[name.toLowerCase()];
 
-            // Minecraft Version Formatting
-            if (/^(a|b)?\d+(\.\d+)+$/.test(lower)) {
-                if (lower.startsWith('b')) return `Minecraft Beta ${lower.substring(1)}`;
-                if (lower.startsWith('a')) return `Minecraft Alpha ${lower.substring(1)}`;
-                return `Minecraft ${lower}`;
+            if (/^(a|b)?\d+(\.\d+)+$/.test(name.toLowerCase())) {
+                if (name.toLowerCase().startsWith('b')) return `Minecraft Beta ${name.substring(1)}`;
+                if (name.toLowerCase().startsWith('a')) return `Minecraft Alpha ${name.substring(1)}`;
+                return `Minecraft ${name}`;
             }
 
-            // Cleanup string (spaces, casing)
             return name
-                .replace(/([a-z])([A-Z])/g, '$1 $2') // Convert CamelCase to spaced
+                .replace(/([a-z])([A-Z])/g, '$1 $2')
                 .replace(/[-_]+/g, ' ')
                 .replace(/\s+/g, ' ')
                 .trim()
@@ -350,12 +315,7 @@
             const count = state.selectedPaths.size;
             DOM.selectedCount.textContent = `${count} selected`;
             DOM.downloadBtn.disabled = count === 0;
-            
-            if (state.isSelectMode) {
-                DOM.downloadBar.classList.remove('hidden');
-            } else {
-                DOM.downloadBar.classList.add('hidden');
-            }
+            DOM.downloadBar.classList.toggle('hidden', !state.isSelectMode);
         }
 
         function toggleSelection(path, isChecked) {
@@ -372,20 +332,18 @@
                 state.selectedPaths.clear();
                 renderGames();
             }
-            
             updateDownloadUI();
         }
 
         function handleSelectAll() {
-            const visibleCheckboxes = Array.from(document.querySelectorAll('#allList input[type="checkbox"]'));
-            const allCurrentlySelected = visibleCheckboxes.length > 0 && visibleCheckboxes.every(cb => cb.checked);
+            const checkboxes = Array.from(document.querySelectorAll('#allList input[type="checkbox"]'));
+            const allSelected = checkboxes.length > 0 && checkboxes.every(cb => cb.checked);
 
-            visibleCheckboxes.forEach(cb => {
-                cb.checked = !allCurrentlySelected;
-                toggleSelection(cb.dataset.path, !allCurrentlySelected);
+            checkboxes.forEach(cb => {
+                cb.checked = !allSelected;
+                toggleSelection(cb.dataset.path, !allSelected);
             });
-
-            DOM.selectAllBtn.textContent = allCurrentlySelected ? 'Select All' : 'Deselect All';
+            DOM.selectAllBtn.textContent = allSelected ? 'Select All' : 'Deselect All';
         }
 
         function createGameElement(game, isRecent = false) {
@@ -434,9 +392,7 @@
             DOM.recentList.innerHTML = '';
             DOM.allList.innerHTML = '';
 
-            const isSearching = query.length > 0;
-            
-            if (!isSearching && recentPaths.length > 0) {
+            if (query.length === 0 && recentPaths.length > 0) {
                 DOM.recentLabel.classList.remove('hidden');
                 recentPaths.forEach(path => {
                     const game = state.games.find(g => g.path === path);
@@ -454,216 +410,166 @@
                 }
             });
 
-            const allVisibleSelected = visibleCount > 0 && 
-                Array.from(document.querySelectorAll('#allList input[type="checkbox"]')).every(cb => cb.checked);
-            DOM.selectAllBtn.textContent = allVisibleSelected && visibleCount > 0 ? 'Deselect All' : 'Select All';
+            const allSelected = visibleCount > 0 && Array.from(document.querySelectorAll('#allList input[type="checkbox"]')).every(cb => cb.checked);
+            DOM.selectAllBtn.textContent = allSelected && visibleCount > 0 ? 'Deselect All' : 'Select All';
         }
 
         function processTreeData(treeData) {
             state.fullTree = treeData;
-            
-            // Build a strict mapping of folders containing an index file to prevent duplicate listings
-            const foldersWithIndex = new Set();
+            const gameRoots = new Set();
+            const discovered = [];
+
+            // 1. Identify all folders containing an index.html (Game Roots)
             treeData.forEach(item => {
-                const lowerPath = item.path.toLowerCase();
-                if (item.type === 'blob' && (lowerPath.endsWith('/index.html') || lowerPath.endsWith('/index.htm'))) {
-                    const parentFolderLower = lowerPath.substring(0, lowerPath.lastIndexOf('/'));
-                    foldersWithIndex.add(parentFolderLower);
+                if (item.type !== 'blob') return;
+                const lower = item.path.toLowerCase();
+                if (lower.endsWith('/index.html') || lower.endsWith('/index.htm')) {
+                    const parentFolder = item.path.substring(0, item.path.lastIndexOf('/'));
+                    if (parentFolder.toLowerCase() === 'inline-tools') return;
+                    
+                    gameRoots.add(parentFolder);
+                    discovered.push({
+                        path: item.path,
+                        name: formatGameName(parentFolder),
+                        isFolder: true,
+                        folderPrefix: parentFolder + '/'
+                    });
                 }
             });
 
-            state.games = treeData
-                .filter(item => {
-                    if (item.type !== 'blob') return false;
+            // 2. Identify standalone HTML files (Not part of a known Game Root)
+            treeData.forEach(item => {
+                if (item.type !== 'blob') return;
+                const lower = item.path.toLowerCase();
+                
+                if (lower.endsWith('.html') || lower.endsWith('.htm')) {
+                    const parts = item.path.split('/');
+                    const filename = parts.pop();
                     
-                    const pathLower = item.path.toLowerCase();
-                    if (!pathLower.endsWith('.html') && !pathLower.endsWith('.htm')) return false;
+                    if (filename.toLowerCase() === 'index.html' || filename.toLowerCase() === 'index.htm') return;
+                    if (parts.length === 0 && CONFIG.excludedRootFiles.has(filename.toLowerCase())) return;
+                    if (parts.includes('inline-tools')) return;
+
+                    let currentPath = parts.join('/');
+                    let isInGameRoot = false;
                     
-                    const pathParts = pathLower.split('/');
-                    const filename = pathParts.pop();
-
-                    if (pathParts.includes('inline-tools')) return false;
-
-                    // ROOT FILE FILTERING (Block root index.html, allow folder index.html)
-                    if (pathParts.length === 0 && (filename.toLowerCase() === 'index.html' || CONFIG.excludedRootFiles.has(filename.toLowerCase()))) {
-                        return false; 
+                    while (currentPath) {
+                        if (gameRoots.has(currentPath)) {
+                            isInGameRoot = true;
+                            break;
+                        }
+                        const lastSlash = currentPath.lastIndexOf('/');
+                        currentPath = lastSlash !== -1 ? currentPath.substring(0, lastSlash) : '';
                     }
 
-                    // 12M OFFLINE COMPLIANCE RULE
-                    if (pathParts.includes('offline') || pathParts.includes('offline-games')) {
-                        if (!pathLower.includes('12m')) return false;
+                    if (!isInGameRoot) {
+                        discovered.push({
+                            path: item.path,
+                            name: formatGameName(item.path),
+                            isFolder: false,
+                            folderPrefix: ''
+                        });
                     }
+                }
+            });
 
-                    // SMART INDEXING (Hide redundant inner-folder HTML files like credits.html if index.html exists)
-                    const isIndexFile = (filename.toLowerCase() === 'index.html' || filename.toLowerCase() === 'index.htm');
-                    const parentFolderLower = pathParts.join('/').toLowerCase();
-                    
-                    if (!isIndexFile && foldersWithIndex.has(parentFolderLower)) {
-                        return false; 
-                    }
-
-                    return true;
-                })
-                .map(item => ({ path: item.path, name: formatGameName(item.path) }))
-                .sort((a, b) => a.name.localeCompare(b.name));
-            
+            state.games = discovered.sort((a, b) => a.name.localeCompare(b.name));
             renderGames();
         }
 
         async function fetchGamesList() {
-            const CACHE_KEY = 'github_tree_cache_v8'; // V8 Force Flush
-            
+            const CACHE_KEY = 'github_tree_cache_v10'; 
             const cachedData = localStorage.getItem(CACHE_KEY);
+            
             if (cachedData) {
                 try {
                     processTreeData(JSON.parse(cachedData).tree);
-                    DOM.syncStatus.textContent = "Loading updates in background...";
+                    DOM.syncStatus.textContent = "Loading updates...";
                 } catch (e) {
-                    console.warn("Cache parse failed, resetting.");
+                    console.warn("Cache parse failed.");
                 }
             } else {
-                DOM.allList.innerHTML = `<li style="justify-content: center; color: var(--text-muted);">Fetching game directory...</li>`;
+                DOM.allList.innerHTML = `<li style="justify-content: center; color: var(--text-muted);">Scanning repository...</li>`;
             }
 
             try {
-                const res = await fetch(CONFIG.apiUrl(), {
-                    headers: { 'Accept': 'application/vnd.github.v3+json' }
-                });
-                
+                const res = await fetch(CONFIG.apiUrl(), { headers: { 'Accept': 'application/vnd.github.v3+json' }});
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
                 const data = await res.json();
                 
-                const newDataString = JSON.stringify(data.tree);
-                const oldDataString = cachedData ? JSON.stringify(JSON.parse(cachedData).tree) : null;
-
-                if (newDataString !== oldDataString) {
-                    try { localStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch(e) {}
+                if (!cachedData || JSON.stringify(data.tree) !== JSON.stringify(JSON.parse(cachedData).tree)) {
+                    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
                     processTreeData(data.tree);
                     DOM.syncStatus.textContent = "Directory updated.";
                 } else {
                     DOM.syncStatus.textContent = "Directory up to date.";
                 }
-                
                 setTimeout(() => DOM.syncStatus.textContent = "", 3000);
-
             } catch (err) {
-                if (!cachedData) {
-                    DOM.allList.innerHTML = `<li class="error-msg">Failed to load directory: ${err.message}. GitHub API limit reached, try again later.</li>`;
-                }
-                DOM.syncStatus.textContent = "Offline mode - using cached list.";
+                if (!cachedData) DOM.allList.innerHTML = `<li class="error-msg">Failed to load: ${err.message}. GitHub API limit reached.</li>`;
+                DOM.syncStatus.textContent = "Offline mode - using cache.";
                 setTimeout(() => DOM.syncStatus.textContent = "", 5000);
             }
         }
 
-        // Extremely robust deep-folder asset discovery (Finds nested Unity Build/ WASMs)
-        function getGameAssets(htmlPath) {
-            const parts = htmlPath.split('/');
-            
-            // Check if it's sitting naked at the root, or directly inside the base offline folder
-            let isStandalone = false;
-            if (parts.length === 1) isStandalone = true;
-            else if (parts.length === 2 && (parts[0].toLowerCase() === 'offline' || parts[0].toLowerCase() === 'offline-games')) isStandalone = true;
-
-            if (isStandalone) {
-                return [htmlPath];
-            } else {
-                parts.pop(); // Remove the index.html from path
-                const folderPrefix = parts.join('/') + '/';
-                
-                // Return EVERYTHING in the repo that shares this parent directory path
-                return state.fullTree
-                    .filter(item => item.type === 'blob' && item.path.startsWith(folderPrefix))
-                    .map(item => item.path);
-            }
-        }
-
-        // Fetch binary data with automatic retry for stability
-        async function fetchFileWithRetry(url, retries = 3) {
-            for (let i = 0; i < retries; i++) {
-                try {
-                    const response = await fetch(url);
-                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                    return await response.blob(); 
-                } catch (e) {
-                    if (i === retries - 1) throw e;
-                    await new Promise(res => setTimeout(res, 1000)); // Wait 1s before retry
-                }
-            }
-        }
-
-        // Process an array of promises in chunks to prevent network blocking
-        async function processInChunks(items, chunk_size, processFn) {
-            let results = [];
-            for (let i = 0; i < items.length; i += chunk_size) {
-                const chunk = items.slice(i, i + chunk_size);
-                results.push(...await Promise.all(chunk.map(processFn)));
-            }
-            return results;
-        }
-
         async function executeDownload() {
             if (state.selectedPaths.size === 0) return;
-
-            const selectedGames = Array.from(state.selectedPaths);
-            const totalGames = selectedGames.length;
-            let gamesProcessed = 0;
+            const selectedGames = Array.from(state.selectedPaths).map(p => state.games.find(g => g.path === p));
+            let processed = 0;
             
             DOM.downloadBtn.disabled = true;
             DOM.selectAllBtn.disabled = true;
 
             try {
-                for (let i = 0; i < totalGames; i += CONFIG.gamesPerZip) {
+                for (let i = 0; i < selectedGames.length; i += CONFIG.gamesPerZip) {
                     const chunk = selectedGames.slice(i, i + CONFIG.gamesPerZip);
                     const zip = new JSZip();
-                    const partNum = Math.floor(i / CONFIG.gamesPerZip) + 1;
-                    const totalParts = Math.ceil(totalGames / CONFIG.gamesPerZip);
 
-                    for (const gameHtmlPath of chunk) {
-                        gamesProcessed++;
-                        const gameName = formatGameName(gameHtmlPath);
-                        DOM.downloadBtn.textContent = `Gathering ${gameName} (${gamesProcessed}/${totalGames})...`;
+                    for (const game of chunk) {
+                        processed++;
+                        DOM.downloadBtn.textContent = `Gathering ${game.name} (${processed}/${selectedGames.length})...`;
                         
-                        // Crawl dependency tree for Unity/WASM components
-                        const assetsToDownload = getGameAssets(gameHtmlPath);
+                        // Smart Asset Bundling logic based on whether it's a folder or standalone file
+                        const assets = game.isFolder 
+                            ? state.fullTree.filter(item => item.type === 'blob' && item.path.startsWith(game.folderPrefix)).map(i => i.path)
+                            : [game.path];
                         
-                        // Fetch the assets in concurrent chunks for speed without overload
-                        await processInChunks(assetsToDownload, CONFIG.concurrentDownloads, async (assetPath) => {
-                            const fileUrl = `./${assetPath.split('/').map(encodeURIComponent).join('/')}`;
-                            try {
-                                const blob = await fetchFileWithRetry(fileUrl);
-                                // Maintain full directory architecture inside the ZIP
-                                zip.file(assetPath, blob);
-                            } catch (e) {
-                                console.warn(`Asset Skipped [${assetPath}]:`, e);
-                            }
-                        });
+                        const chunk_size = CONFIG.concurrentDownloads;
+                        for (let j = 0; j < assets.length; j += chunk_size) {
+                            await Promise.all(assets.slice(j, j + chunk_size).map(async (assetPath) => {
+                                try {
+                                    let retries = 3;
+                                    while (retries > 0) {
+                                        try {
+                                            const res = await fetch(`./${assetPath.split('/').map(encodeURIComponent).join('/')}`);
+                                            if (!res.ok) throw new Error();
+                                            zip.file(assetPath, await res.blob());
+                                            break;
+                                        } catch (e) {
+                                            retries--;
+                                            if (retries === 0) throw e;
+                                            await new Promise(r => setTimeout(r, 1000));
+                                        }
+                                    }
+                                } catch (e) { console.warn(`Skipped ${assetPath}`); }
+                            }));
+                        }
                     }
 
-                    DOM.downloadBtn.textContent = `Compressing Part ${partNum}... (May take a moment)`;
-                    const content = await zip.generateAsync({ 
-                        type: 'blob', 
-                        compression: "STORE" // Store instead of DEFLATE to prevent RAM crashing on already-compressed WASM files
-                    });
+                    DOM.downloadBtn.textContent = `Compressing ZIP...`;
+                    const content = await zip.generateAsync({ type: 'blob', compression: "STORE" });
                     
                     const link = document.createElement('a');
                     link.href = URL.createObjectURL(content);
-                    link.download = totalParts > 1 ? `Games_Archive_Part_${partNum}.zip` : `Games_Archive.zip`;
+                    link.download = selectedGames.length > CONFIG.gamesPerZip ? `Games_Part_${Math.floor(i/CONFIG.gamesPerZip)+1}.zip` : `Games_Archive.zip`;
                     document.body.appendChild(link);
                     link.click();
                     link.remove();
                     URL.revokeObjectURL(link.href);
-
-                    if (i + CONFIG.gamesPerZip < totalGames) {
-                        DOM.downloadBtn.textContent = `Waiting to start Part ${partNum + 1}...`;
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                    }
                 }
-
                 toggleSelectMode();
-
             } catch (err) {
-                alert(`Download interrupted: ${err.message}. Try downloading fewer games at once.`);
-                console.error(err);
+                alert(`Download interrupted: ${err.message}. Try fewer games.`);
             } finally {
                 updateDownloadUI();
                 DOM.selectAllBtn.disabled = false;
@@ -684,7 +590,6 @@
         DOM.selectAllBtn.addEventListener('click', handleSelectAll);
         DOM.downloadBtn.addEventListener('click', executeDownload);
 
-        // Boot
         fetchGamesList();
     </script>
 </body>
