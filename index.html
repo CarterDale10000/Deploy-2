@@ -4,36 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><circle cx='128' cy='128' r='128' fill='%230066cc'/><circle cx='128' cy='128' r='70' fill='none' stroke='white' stroke-width='24' stroke-dasharray='30 20'/><circle cx='128' cy='128' r='30' fill='white'/></svg>">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><circle cx='128' cy='128' r='128' fill='%23000'/><circle cx='128' cy='128' r='70' fill='none' stroke='white' stroke-width='24' stroke-dasharray='30 20'/></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
-            --primary: #0066cc;
-            --primary-hover: #0052a3;
-            --success: #28a745;
-            --success-hover: #218838;
-            --bg: #f8f9fa;
+            --primary: #000000;
+            --primary-hover: #333333;
+            --bg: #fafafa;
             --surface: #ffffff;
-            --border: #e9ecef;
-            --text-main: #212529;
-            --text-muted: #6c757d;
+            --border: #eaeaea;
+            --text-main: #111111;
+            --text-muted: #666666;
+            --success: #28a745;
         }
 
         body {
-            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             background-color: var(--bg);
             color: var(--text-main);
             line-height: 1.5;
             max-width: 800px;
             margin: 0 auto;
             padding: 30px 20px 100px;
-            transition: background-color 0.3s;
-        }
-
-        a[href*="vercel.app"], .vercel-badge {
-            display: none !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
         }
 
         .header-controls {
@@ -49,25 +41,24 @@
 
         input[type="text"] {
             flex-grow: 1;
-            padding: 12px 16px;
-            border: 1px solid #ced4da;
+            padding: 14px 16px;
+            border: 1px solid var(--border);
             border-radius: 8px;
             font-size: 1rem;
+            outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
 
         input[type="text"]:focus {
-            outline: none;
             border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
         }
 
         .btn-tiny {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            border: 1px solid #ced4da;
+            width: 48px;
+            height: 48px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
             background-color: var(--surface);
             color: var(--text-muted);
             display: flex;
@@ -80,7 +71,7 @@
         }
 
         .btn-tiny:hover {
-            background-color: #e2e6ea;
+            background-color: #f0f0f0;
             color: var(--text-main);
         }
 
@@ -91,12 +82,12 @@
         }
 
         .section-label {
-            font-weight: 700;
-            font-size: 1.25rem;
+            font-weight: 600;
+            font-size: 1.1rem;
             margin: 30px 0 15px;
-            padding-bottom: 8px;
-            border-bottom: 2px solid var(--border);
-            color: var(--text-main);
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .section-label.hidden {
@@ -109,23 +100,22 @@
             margin: 0;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 10px;
         }
 
         li {
             display: flex;
             align-items: center;
             background: var(--surface);
-            padding: 12px 16px;
+            padding: 16px;
             border-radius: 8px;
             border: 1px solid var(--border);
-            transition: all 0.2s ease;
-            cursor: default;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
 
         li:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
         body.select-mode li {
@@ -156,11 +146,9 @@
             font-weight: 500;
             flex-grow: 1;
             font-size: 1.05rem;
-            transition: all 0.2s;
         }
 
         .game-link:hover {
-            color: var(--primary-hover);
             text-decoration: underline;
         }
 
@@ -173,7 +161,7 @@
             bottom: 24px;
             left: 50%;
             transform: translateX(-50%);
-            background: #1a1d20;
+            background: #111;
             color: #fff;
             padding: 16px 24px;
             border-radius: 12px;
@@ -204,19 +192,11 @@
         }
 
         .btn-success { background-color: var(--success); color: white; }
-        .btn-success:hover:not(:disabled) { background-color: var(--success-hover); }
-        .btn-success:disabled { background-color: #495057; color: #adb5bd; cursor: not-allowed; }
+        .btn-success:hover:not(:disabled) { background-color: #218838; }
+        .btn-success:disabled { background-color: #444; color: #888; cursor: not-allowed; }
         
-        .btn-outline { background: transparent; border: 1px solid #6c757d; color: #fff; }
-        .btn-outline:hover { background: #6c757d; }
-
-        .error-msg {
-            color: #dc3545;
-            background: #f8d7da;
-            border-color: #f5c6cb;
-            padding: 16px;
-            border-radius: 8px;
-        }
+        .btn-outline { background: transparent; border: 1px solid #666; color: #fff; }
+        .btn-outline:hover { background: #333; }
         
         .sync-status {
             font-size: 0.8rem;
@@ -230,9 +210,9 @@
 <body>
 
     <div class="header-controls">
-        <input type="text" id="searchInput" placeholder="Search...">
+        <input type="text" id="searchInput" placeholder="Search games...">
         <button class="btn-tiny" id="toggleModeBtn" aria-label="Toggle Selection Mode">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="9 11 12 14 22 4"></polyline>
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
             </svg>
@@ -244,7 +224,7 @@
     <div class="section-label hidden" id="recentLabel">Recent</div>
     <ul id="recentList"></ul>
 
-    <div class="section-label">Directory</div>
+    <div class="section-label">All Games</div>
     <ul id="allList"></ul>
 
     <div class="download-bar hidden" id="downloadBar">
@@ -255,14 +235,11 @@
 
     <script>
         const CONFIG = {
-            user: 'CarterDale10000',
-            repo: 'Deploy-2',
-            branch: 'master',
-            apiUrl: () => `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/git/trees/${CONFIG.branch}?recursive=1`,
-            excludedRootFiles: new Set(['single-file.html', 'file-input.html', 'file-input-minified.html', 'epicviewer.htm', 'readme.md', 'license', '404.html', 'index.html']),
-            excludedFolders: new Set(['inline-tools']),
-            gamesPerZip: 5,
-            concurrentDownloads: 5
+            apiUrl: 'https://api.github.com/repos/CarterDale10000/Deploy-2/git/trees/master?recursive=1',
+            excludedFolders: new Set(['inline-tools', 'file-input-minified', 'file-input', 'pear']),
+            excludedFiles: new Set(['404.html', 'index.html', 'readme.md', 'license']),
+            concurrentDownloads: 5,
+            gamesPerZip: 5
         };
 
         const state = {
@@ -286,60 +263,31 @@
             syncStatus: document.getElementById('syncStatus')
         };
 
-        // Purge old corrupt caches from earlier iterations
-        Object.keys(localStorage).forEach(key => {
-            if (key.startsWith('github_tree_cache') && key !== 'github_tree_cache_v12') {
-                localStorage.removeItem(key);
-            }
-        });
-
         function getRecentGames() {
-            try { return JSON.parse(localStorage.getItem('recentGames_v3')) || []; } 
+            try { return JSON.parse(localStorage.getItem('recentGames_v4')) || []; } 
             catch { return []; }
         }
 
-        function saveRecentGame(path) {
+        function saveRecentGame(route) {
             if (state.isSelectMode) return; 
-            let recent = getRecentGames().filter(p => p !== path);
-            recent.unshift(path);
-            if (recent.length > 10) recent.pop();
-            localStorage.setItem('recentGames_v3', JSON.stringify(recent));
+            let recent = getRecentGames().filter(r => r !== route);
+            recent.unshift(route);
+            if (recent.length > 5) recent.pop();
+            localStorage.setItem('recentGames_v4', JSON.stringify(recent));
             renderGames();
         }
 
-        function formatGameName(path) {
-            const parts = path.split('/');
-            let name = parts.pop().replace(/\.(html|htm)$/i, '');
-            
-            const genericNames = ['index', 'game', 'main', 'play', 'default'];
-            if (genericNames.includes(name.toLowerCase()) && parts.length > 0) {
-                name = parts[parts.length - 1];
-            }
-
-            name = name.replace(/12m/gi, '');
-
+        function formatName(rawName) {
+            const cleanName = rawName.replace(/12m/gi, '');
             const overrides = { 
                 'sm64': 'Super Mario 64', 
                 'fnaf': "Five Nights at Freddy's", 
                 'pvz': 'Plants vs Zombies',
-                'bitlifetwo': 'BitLife',
-                'bitlife': 'BitLife'
+                'bitlife': 'BitLife',
+                'bitlifetwo': 'BitLife'
             };
-            
-            if (overrides[name.toLowerCase()]) return overrides[name.toLowerCase()];
-
-            if (/^(a|b)?\d+(\.\d+)+$/.test(name.toLowerCase())) {
-                if (name.toLowerCase().startsWith('b')) return `Minecraft Beta ${name.substring(1)}`;
-                if (name.toLowerCase().startsWith('a')) return `Minecraft Alpha ${name.substring(1)}`;
-                return `Minecraft ${name}`;
-            }
-
-            return name
-                .replace(/([a-z])([A-Z])/g, '$1 $2')
-                .replace(/[-_]+/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim()
-                .replace(/\b\w/g, c => c.toUpperCase());
+            if (overrides[cleanName.toLowerCase()]) return overrides[cleanName.toLowerCase()];
+            return cleanName.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
         }
 
         function updateDownloadUI() {
@@ -349,8 +297,8 @@
             DOM.downloadBar.classList.toggle('hidden', !state.isSelectMode);
         }
 
-        function toggleSelection(path, isChecked) {
-            isChecked ? state.selectedPaths.add(path) : state.selectedPaths.delete(path);
+        function toggleSelection(route, isChecked) {
+            isChecked ? state.selectedPaths.add(route) : state.selectedPaths.delete(route);
             updateDownloadUI();
         }
 
@@ -372,7 +320,7 @@
 
             checkboxes.forEach(cb => {
                 cb.checked = !allSelected;
-                toggleSelection(cb.dataset.path, !allSelected);
+                toggleSelection(cb.dataset.route, !allSelected);
             });
             DOM.selectAllBtn.textContent = allSelected ? 'Select All' : 'Deselect All';
         }
@@ -385,38 +333,29 @@
             
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
-            checkbox.dataset.path = game.path;
-            checkbox.checked = state.selectedPaths.has(game.path);
-            checkbox.id = `${isRecent ? 'recent' : 'all'}-${game.path}`;
+            checkbox.dataset.route = game.route;
+            checkbox.checked = state.selectedPaths.has(game.route);
             
             li.addEventListener('click', (e) => {
                 if (state.isSelectMode && e.target !== checkbox) {
                     checkbox.checked = !checkbox.checked;
-                    toggleSelection(game.path, checkbox.checked);
+                    toggleSelection(game.route, checkbox.checked);
                 }
             });
 
-            checkbox.addEventListener('change', e => toggleSelection(game.path, e.target.checked));
+            checkbox.addEventListener('change', e => toggleSelection(game.route, e.target.checked));
             checkboxWrapper.appendChild(checkbox);
 
             const a = document.createElement('a');
             a.className = 'game-link';
             
-            // VERCEL TRAILING SLASH FIX: Vital for Unity WebGL routing
-            if (game.isFolder) {
-                a.href = `/${game.route}/`;
-            } else {
-                a.href = `/${game.route}`;
-            }
-            
+            // Vercel Unity WebGL fix: Folder roots require a trailing slash.
+            a.href = game.isFolder ? `/${game.route}/` : `/${game.route}`;
             a.textContent = game.name;
             
             a.addEventListener('click', (e) => {
-                if (state.isSelectMode) {
-                    e.preventDefault();
-                } else {
-                    saveRecentGame(game.path);
-                }
+                if (state.isSelectMode) e.preventDefault();
+                else saveRecentGame(game.route);
             });
 
             li.append(checkboxWrapper, a);
@@ -425,15 +364,15 @@
 
         function renderGames() {
             const query = state.searchQuery.toLowerCase();
-            const recentPaths = getRecentGames();
+            const recentRoutes = getRecentGames();
             
             DOM.recentList.innerHTML = '';
             DOM.allList.innerHTML = '';
 
-            if (query.length === 0 && recentPaths.length > 0) {
+            if (query.length === 0 && recentRoutes.length > 0) {
                 DOM.recentLabel.classList.remove('hidden');
-                recentPaths.forEach(path => {
-                    const game = state.games.find(g => g.path === path);
+                recentRoutes.forEach(route => {
+                    const game = state.games.find(g => g.route === route);
                     if (game) DOM.recentList.appendChild(createGameElement(game, true));
                 });
             } else {
@@ -442,7 +381,7 @@
 
             let visibleCount = 0;
             state.games.forEach(game => {
-                if (game.name.toLowerCase().includes(query) || game.path.toLowerCase().includes(query)) {
+                if (game.name.toLowerCase().includes(query)) {
                     DOM.allList.appendChild(createGameElement(game));
                     visibleCount++;
                 }
@@ -452,111 +391,94 @@
             DOM.selectAllBtn.textContent = allSelected && visibleCount > 0 ? 'Deselect All' : 'Select All';
         }
 
-        function processTreeData(treeData) {
-            state.fullTree = treeData;
-            const gameRoots = new Set();
+        function processTreeData(tree) {
+            state.fullTree = tree;
             const discovered = [];
+            const gameFolders = new Set();
 
-            // 1. Identify all folders containing an index.html (Game Roots)
-            treeData.forEach(item => {
+            // 1. Identify Folders via index.html (Flattens nested games automatically)
+            tree.forEach(item => {
                 if (item.type !== 'blob') return;
                 const lower = item.path.toLowerCase();
                 
                 if (lower.endsWith('/index.html') || lower.endsWith('/index.htm')) {
-                    const parentFolder = item.path.substring(0, item.path.lastIndexOf('/'));
+                    const fullFolderPath = item.path.substring(0, item.path.lastIndexOf('/'));
+                    const folderName = fullFolderPath.split('/').pop(); 
                     
-                    if (CONFIG.excludedFolders.has(parentFolder.toLowerCase())) return;
+                    if (CONFIG.excludedFolders.has(folderName.toLowerCase()) || CONFIG.excludedFolders.has(fullFolderPath.toLowerCase())) return;
                     
-                    gameRoots.add(parentFolder);
+                    gameFolders.add(fullFolderPath);
                     discovered.push({
-                        path: item.path,
-                        route: parentFolder.split('/').map(encodeURIComponent).join('/'),
-                        name: formatGameName(parentFolder),
+                        route: fullFolderPath,
+                        name: formatName(folderName),
                         isFolder: true,
-                        folderPrefix: parentFolder + '/'
+                        assetPrefix: fullFolderPath + '/'
                     });
                 }
             });
 
-            // 2. Identify standalone HTML files
-            treeData.forEach(item => {
+            // 2. Identify standalone HTML files not in identified folders
+            tree.forEach(item => {
                 if (item.type !== 'blob') return;
                 const lower = item.path.toLowerCase();
                 
                 if (lower.endsWith('.html') || lower.endsWith('.htm')) {
                     const parts = item.path.split('/');
                     const filename = parts.pop();
+                    const parentFolder = parts.join('/');
                     
-                    if (filename.toLowerCase() === 'index.html' || filename.toLowerCase() === 'index.htm') return;
-                    if (parts.length === 0 && CONFIG.excludedRootFiles.has(filename.toLowerCase())) return;
-                    if (CONFIG.excludedFolders.has(parts[0]?.toLowerCase())) return;
-
-                    let currentPath = parts.join('/');
-                    let isInGameRoot = false;
+                    if (CONFIG.excludedFiles.has(filename.toLowerCase())) return;
                     
+                    let isInGameFolder = false;
+                    let currentPath = parentFolder;
                     while (currentPath) {
-                        if (gameRoots.has(currentPath)) {
-                            isInGameRoot = true;
-                            break;
-                        }
-                        const lastSlash = currentPath.lastIndexOf('/');
-                        currentPath = lastSlash !== -1 ? currentPath.substring(0, lastSlash) : '';
+                        if (gameFolders.has(currentPath)) { isInGameFolder = true; break; }
+                        currentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
                     }
 
-                    if (!isInGameRoot) {
+                    if (!isInGameFolder && !CONFIG.excludedFolders.has(parentFolder.toLowerCase())) {
                         discovered.push({
-                            path: item.path,
-                            route: item.path.split('/').map(encodeURIComponent).join('/'),
-                            name: formatGameName(item.path),
+                            route: item.path,
+                            name: formatName(filename.replace(/\.(html|htm)$/i, '')),
                             isFolder: false,
-                            folderPrefix: ''
+                            assetPrefix: item.path
                         });
                     }
                 }
             });
 
-            state.games = discovered.sort((a, b) => a.name.localeCompare(b.name));
+            const uniqueGames = Array.from(new Map(discovered.map(g => [g.route, g])).values());
+            state.games = uniqueGames.sort((a, b) => a.name.localeCompare(b.name));
             renderGames();
         }
 
         async function fetchGamesList() {
-            const CACHE_KEY = 'github_tree_cache_v12'; 
-            const cachedData = localStorage.getItem(CACHE_KEY);
+            const CACHE_KEY = 'vercel_directory_cache_v2'; 
+            const cached = sessionStorage.getItem(CACHE_KEY);
             
-            if (cachedData) {
-                try {
-                    processTreeData(JSON.parse(cachedData).tree);
-                    DOM.syncStatus.textContent = "Loading updates...";
-                } catch (e) {
-                    console.warn("Cache parse failed.");
-                }
+            if (cached) {
+                processTreeData(JSON.parse(cached).tree);
+                DOM.syncStatus.textContent = "Directory loaded.";
             } else {
                 DOM.allList.innerHTML = `<li style="justify-content: center; color: var(--text-muted);">Scanning repository...</li>`;
-            }
-
-            try {
-                const res = await fetch(CONFIG.apiUrl(), { headers: { 'Accept': 'application/vnd.github.v3+json' }});
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                const data = await res.json();
-                
-                if (!cachedData || JSON.stringify(data.tree) !== JSON.stringify(JSON.parse(cachedData).tree)) {
-                    localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+                try {
+                    const res = await fetch(CONFIG.apiUrl);
+                    if (!res.ok) throw new Error();
+                    const data = await res.json();
+                    
+                    sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
                     processTreeData(data.tree);
-                    DOM.syncStatus.textContent = "Directory updated.";
-                } else {
-                    DOM.syncStatus.textContent = "Directory up to date.";
+                    DOM.syncStatus.textContent = "Directory synced.";
+                } catch (err) {
+                    DOM.allList.innerHTML = `<li style="color: #dc3545;">Failed to load directory. GitHub API limit reached.</li>`;
                 }
-                setTimeout(() => DOM.syncStatus.textContent = "", 3000);
-            } catch (err) {
-                if (!cachedData) DOM.allList.innerHTML = `<li class="error-msg">Failed to load: ${err.message}. GitHub API limit reached.</li>`;
-                DOM.syncStatus.textContent = "Offline mode - using cache.";
-                setTimeout(() => DOM.syncStatus.textContent = "", 5000);
             }
+            setTimeout(() => DOM.syncStatus.textContent = "", 3000);
         }
 
         async function executeDownload() {
             if (state.selectedPaths.size === 0) return;
-            const selectedGames = Array.from(state.selectedPaths).map(p => state.games.find(g => g.path === p));
+            const selectedGames = Array.from(state.selectedPaths).map(r => state.games.find(g => g.route === r));
             let processed = 0;
             
             DOM.downloadBtn.disabled = true;
@@ -572,28 +494,16 @@
                         DOM.downloadBtn.textContent = `Gathering ${game.name} (${processed}/${selectedGames.length})...`;
                         
                         const assets = game.isFolder 
-                            ? state.fullTree.filter(item => item.type === 'blob' && item.path.startsWith(game.folderPrefix)).map(i => i.path)
-                            : [game.path];
+                            ? state.fullTree.filter(item => item.type === 'blob' && item.path.startsWith(game.assetPrefix)).map(i => i.path)
+                            : [game.route];
                         
-                        const chunk_size = CONFIG.concurrentDownloads;
-                        for (let j = 0; j < assets.length; j += chunk_size) {
-                            await Promise.all(assets.slice(j, j + chunk_size).map(async (assetPath) => {
+                        for (let j = 0; j < assets.length; j += CONFIG.concurrentDownloads) {
+                            await Promise.all(assets.slice(j, j + CONFIG.concurrentDownloads).map(async (assetPath) => {
                                 try {
-                                    let retries = 3;
-                                    while (retries > 0) {
-                                        try {
-                                            // Fetch using absolute path to bypass Vercel sub-routing issues on binaries
-                                            const assetUrl = `/${assetPath.split('/').map(encodeURIComponent).join('/')}`;
-                                            const res = await fetch(assetUrl);
-                                            if (!res.ok) throw new Error();
-                                            zip.file(assetPath, await res.blob());
-                                            break;
-                                        } catch (e) {
-                                            retries--;
-                                            if (retries === 0) throw e;
-                                            await new Promise(r => setTimeout(r, 1000));
-                                        }
-                                    }
+                                    const assetUrl = `/${assetPath.split('/').map(encodeURIComponent).join('/')}`;
+                                    const res = await fetch(assetUrl);
+                                    if (!res.ok) throw new Error();
+                                    zip.file(assetPath, await res.blob());
                                 } catch (e) { console.warn(`Skipped ${assetPath}`); }
                             }));
                         }
@@ -612,7 +522,7 @@
                 }
                 toggleSelectMode();
             } catch (err) {
-                alert(`Download interrupted: ${err.message}. Try fewer games.`);
+                alert(`Download interrupted. Try selecting fewer games.`);
             } finally {
                 updateDownloadUI();
                 DOM.selectAllBtn.disabled = false;
