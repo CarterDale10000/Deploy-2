@@ -236,8 +236,11 @@
     <script>
         const CONFIG = {
             apiUrl: 'https://api.github.com/repos/CarterDale10000/Deploy-2/git/trees/master?recursive=1',
-            excludedFolders: new Set(['inline-tools', 'file-input-minified', 'file-input', 'pear']),
-            excludedFiles: new Set(['404.html', 'index.html', 'readme.md', 'license']),
+            excludedFolders: new Set([
+                'inline-tools', 'file-input-minified', 'file-input', 'pear', 
+                'code-org', 'code-org-v2', 'codehs', 'epicviewer', 'offline', 'images', 'assets'
+            ]),
+            excludedFiles: new Set(['404.html', 'index.html', 'readme.md', 'license', 'epicviewer.htm', 'epicviewer.html']),
             concurrentDownloads: 5,
             gamesPerZip: 5
         };
@@ -264,7 +267,7 @@
         };
 
         function getRecentGames() {
-            try { return JSON.parse(localStorage.getItem('recentGames_v4')) || []; } 
+            try { return JSON.parse(localStorage.getItem('recentGames_v5')) || []; } 
             catch { return []; }
         }
 
@@ -273,7 +276,7 @@
             let recent = getRecentGames().filter(r => r !== route);
             recent.unshift(route);
             if (recent.length > 5) recent.pop();
-            localStorage.setItem('recentGames_v4', JSON.stringify(recent));
+            localStorage.setItem('recentGames_v5', JSON.stringify(recent));
             renderGames();
         }
 
@@ -349,7 +352,6 @@
             const a = document.createElement('a');
             a.className = 'game-link';
             
-            // Vercel Unity WebGL fix: Folder roots require a trailing slash.
             a.href = game.isFolder ? `/${game.route}/` : `/${game.route}`;
             a.textContent = game.name;
             
@@ -396,7 +398,6 @@
             const discovered = [];
             const gameFolders = new Set();
 
-            // 1. Identify Folders via index.html (Flattens nested games automatically)
             tree.forEach(item => {
                 if (item.type !== 'blob') return;
                 const lower = item.path.toLowerCase();
@@ -405,11 +406,13 @@
                     const fullFolderPath = item.path.substring(0, item.path.lastIndexOf('/'));
                     const folderName = fullFolderPath.split('/').pop(); 
                     
-                    if (CONFIG.excludedFolders.has(folderName.toLowerCase()) || CONFIG.excludedFolders.has(fullFolderPath.toLowerCase())) return;
+                    // Exclude root utility folders, but process their children if they contain nested games.
+                    // If the IMMEDIATE folder name matches an exclusion, we skip it as a game entry.
+                    if (CONFIG.excludedFolders.has(folderName.toLowerCase())) return;
                     
                     gameFolders.add(fullFolderPath);
                     discovered.push({
-                        route: fullFolderPath,
+                        route: fullFolderPath.split('/').map(encodeURIComponent).join('/'),
                         name: formatName(folderName),
                         isFolder: true,
                         assetPrefix: fullFolderPath + '/'
@@ -417,7 +420,6 @@
                 }
             });
 
-            // 2. Identify standalone HTML files not in identified folders
             tree.forEach(item => {
                 if (item.type !== 'blob') return;
                 const lower = item.path.toLowerCase();
@@ -438,7 +440,7 @@
 
                     if (!isInGameFolder && !CONFIG.excludedFolders.has(parentFolder.toLowerCase())) {
                         discovered.push({
-                            route: item.path,
+                            route: item.path.split('/').map(encodeURIComponent).join('/'),
                             name: formatName(filename.replace(/\.(html|htm)$/i, '')),
                             isFolder: false,
                             assetPrefix: item.path
@@ -453,7 +455,7 @@
         }
 
         async function fetchGamesList() {
-            const CACHE_KEY = 'vercel_directory_cache_v2'; 
+            const CACHE_KEY = 'vercel_directory_cache_v5'; 
             const cached = sessionStorage.getItem(CACHE_KEY);
             
             if (cached) {
@@ -495,7 +497,7 @@
                         
                         const assets = game.isFolder 
                             ? state.fullTree.filter(item => item.type === 'blob' && item.path.startsWith(game.assetPrefix)).map(i => i.path)
-                            : [game.route];
+                            : [decodeURIComponent(game.route)];
                         
                         for (let j = 0; j < assets.length; j += CONFIG.concurrentDownloads) {
                             await Promise.all(assets.slice(j, j + CONFIG.concurrentDownloads).map(async (assetPath) => {
