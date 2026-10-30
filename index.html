@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Directory Dashboard</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><circle cx='128' cy='128' r='128' fill='%23e43a3c'/><circle cx='128' cy='128' r='70' fill='none' stroke='white' stroke-width='24' stroke-dasharray='30 20'/><circle cx='128' cy='128' r='30' fill='white'/></svg>">
+    <title>Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><circle cx='128' cy='128' r='128' fill='%230066cc'/><circle cx='128' cy='128' r='70' fill='none' stroke='white' stroke-width='24' stroke-dasharray='30 20'/><circle cx='128' cy='128' r='30' fill='white'/></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         :root {
@@ -27,11 +27,10 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 30px 20px 100px;
+            transition: background-color 0.3s;
         }
 
-        a[href*="netlify.com"], 
-        #netlify-logo, 
-        .netlify-badge {
+        a[href*="vercel.app"], .vercel-badge {
             display: none !important;
             opacity: 0 !important;
             pointer-events: none !important;
@@ -54,8 +53,8 @@
             border: 1px solid #ced4da;
             border-radius: 8px;
             font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-            transition: all 0.2s;
         }
 
         input[type="text"]:focus {
@@ -75,8 +74,9 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
             flex-shrink: 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
 
         .btn-tiny:hover {
@@ -96,9 +96,12 @@
             margin: 30px 0 15px;
             padding-bottom: 8px;
             border-bottom: 2px solid var(--border);
+            color: var(--text-main);
         }
 
-        .section-label.hidden { display: none; }
+        .section-label.hidden {
+            display: none;
+        }
 
         ul {
             list-style: none;
@@ -117,6 +120,7 @@
             border-radius: 8px;
             border: 1px solid var(--border);
             transition: all 0.2s ease;
+            cursor: default;
         }
 
         li:hover {
@@ -124,7 +128,9 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.04);
         }
 
-        body.select-mode li { cursor: pointer; }
+        body.select-mode li {
+            cursor: pointer;
+        }
 
         .checkbox-wrapper {
             display: none;
@@ -133,7 +139,9 @@
             margin-right: 16px;
         }
 
-        body.select-mode .checkbox-wrapper { display: flex; }
+        body.select-mode .checkbox-wrapper {
+            display: flex;
+        }
 
         input[type="checkbox"] {
             cursor: pointer;
@@ -148,10 +156,17 @@
             font-weight: 500;
             flex-grow: 1;
             font-size: 1.05rem;
+            transition: all 0.2s;
         }
 
-        .game-link:hover { text-decoration: underline; }
-        body.select-mode .game-link { pointer-events: none; }
+        .game-link:hover {
+            color: var(--primary-hover);
+            text-decoration: underline;
+        }
+
+        body.select-mode .game-link {
+            pointer-events: none;
+        }
 
         .download-bar {
             position: fixed;
@@ -167,6 +182,8 @@
             gap: 20px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             z-index: 1000;
+            width: max-content;
+            max-width: 90%;
             transition: opacity 0.3s, transform 0.3s;
         }
 
@@ -182,6 +199,7 @@
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
+            font-size: 0.95rem;
             transition: all 0.2s;
         }
 
@@ -212,7 +230,7 @@
 <body>
 
     <div class="header-controls">
-        <input type="text" id="searchInput" placeholder="Search games...">
+        <input type="text" id="searchInput" placeholder="Search...">
         <button class="btn-tiny" id="toggleModeBtn" aria-label="Toggle Selection Mode">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <polyline points="9 11 12 14 22 4"></polyline>
@@ -241,7 +259,8 @@
             repo: 'Deploy-2',
             branch: 'master',
             apiUrl: () => `https://api.github.com/repos/${CONFIG.user}/${CONFIG.repo}/git/trees/${CONFIG.branch}?recursive=1`,
-            excludedRootFiles: new Set(['single-file.html', 'file-input.html', 'epicviewer.htm', 'readme.md', 'license', '404.html', 'index.html']),
+            excludedRootFiles: new Set(['single-file.html', 'file-input.html', 'file-input-minified.html', 'epicviewer.htm', 'readme.md', 'license', '404.html', 'index.html']),
+            excludedFolders: new Set(['inline-tools']),
             gamesPerZip: 5,
             concurrentDownloads: 5
         };
@@ -267,8 +286,15 @@
             syncStatus: document.getElementById('syncStatus')
         };
 
+        // Purge old corrupt caches from earlier iterations
+        Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('github_tree_cache') && key !== 'github_tree_cache_v12') {
+                localStorage.removeItem(key);
+            }
+        });
+
         function getRecentGames() {
-            try { return JSON.parse(localStorage.getItem('recentGames_v2')) || []; } 
+            try { return JSON.parse(localStorage.getItem('recentGames_v3')) || []; } 
             catch { return []; }
         }
 
@@ -277,14 +303,19 @@
             let recent = getRecentGames().filter(p => p !== path);
             recent.unshift(path);
             if (recent.length > 10) recent.pop();
-            localStorage.setItem('recentGames_v2', JSON.stringify(recent));
+            localStorage.setItem('recentGames_v3', JSON.stringify(recent));
             renderGames();
         }
 
         function formatGameName(path) {
             const parts = path.split('/');
-            let name = parts[parts.length - 1].replace(/\.(html|htm)$/i, '');
+            let name = parts.pop().replace(/\.(html|htm)$/i, '');
             
+            const genericNames = ['index', 'game', 'main', 'play', 'default'];
+            if (genericNames.includes(name.toLowerCase()) && parts.length > 0) {
+                name = parts[parts.length - 1];
+            }
+
             name = name.replace(/12m/gi, '');
 
             const overrides = { 
@@ -370,7 +401,14 @@
 
             const a = document.createElement('a');
             a.className = 'game-link';
-            a.href = `./${game.path.split('/').map(encodeURIComponent).join('/')}`;
+            
+            // VERCEL TRAILING SLASH FIX: Vital for Unity WebGL routing
+            if (game.isFolder) {
+                a.href = `/${game.route}/`;
+            } else {
+                a.href = `/${game.route}`;
+            }
+            
             a.textContent = game.name;
             
             a.addEventListener('click', (e) => {
@@ -423,13 +461,16 @@
             treeData.forEach(item => {
                 if (item.type !== 'blob') return;
                 const lower = item.path.toLowerCase();
+                
                 if (lower.endsWith('/index.html') || lower.endsWith('/index.htm')) {
                     const parentFolder = item.path.substring(0, item.path.lastIndexOf('/'));
-                    if (parentFolder.toLowerCase() === 'inline-tools') return;
+                    
+                    if (CONFIG.excludedFolders.has(parentFolder.toLowerCase())) return;
                     
                     gameRoots.add(parentFolder);
                     discovered.push({
                         path: item.path,
+                        route: parentFolder.split('/').map(encodeURIComponent).join('/'),
                         name: formatGameName(parentFolder),
                         isFolder: true,
                         folderPrefix: parentFolder + '/'
@@ -437,7 +478,7 @@
                 }
             });
 
-            // 2. Identify standalone HTML files (Not part of a known Game Root)
+            // 2. Identify standalone HTML files
             treeData.forEach(item => {
                 if (item.type !== 'blob') return;
                 const lower = item.path.toLowerCase();
@@ -448,7 +489,7 @@
                     
                     if (filename.toLowerCase() === 'index.html' || filename.toLowerCase() === 'index.htm') return;
                     if (parts.length === 0 && CONFIG.excludedRootFiles.has(filename.toLowerCase())) return;
-                    if (parts.includes('inline-tools')) return;
+                    if (CONFIG.excludedFolders.has(parts[0]?.toLowerCase())) return;
 
                     let currentPath = parts.join('/');
                     let isInGameRoot = false;
@@ -465,6 +506,7 @@
                     if (!isInGameRoot) {
                         discovered.push({
                             path: item.path,
+                            route: item.path.split('/').map(encodeURIComponent).join('/'),
                             name: formatGameName(item.path),
                             isFolder: false,
                             folderPrefix: ''
@@ -478,7 +520,7 @@
         }
 
         async function fetchGamesList() {
-            const CACHE_KEY = 'github_tree_cache_v10'; 
+            const CACHE_KEY = 'github_tree_cache_v12'; 
             const cachedData = localStorage.getItem(CACHE_KEY);
             
             if (cachedData) {
@@ -529,7 +571,6 @@
                         processed++;
                         DOM.downloadBtn.textContent = `Gathering ${game.name} (${processed}/${selectedGames.length})...`;
                         
-                        // Smart Asset Bundling logic based on whether it's a folder or standalone file
                         const assets = game.isFolder 
                             ? state.fullTree.filter(item => item.type === 'blob' && item.path.startsWith(game.folderPrefix)).map(i => i.path)
                             : [game.path];
@@ -541,7 +582,9 @@
                                     let retries = 3;
                                     while (retries > 0) {
                                         try {
-                                            const res = await fetch(`./${assetPath.split('/').map(encodeURIComponent).join('/')}`);
+                                            // Fetch using absolute path to bypass Vercel sub-routing issues on binaries
+                                            const assetUrl = `/${assetPath.split('/').map(encodeURIComponent).join('/')}`;
+                                            const res = await fetch(assetUrl);
                                             if (!res.ok) throw new Error();
                                             zip.file(assetPath, await res.blob());
                                             break;
