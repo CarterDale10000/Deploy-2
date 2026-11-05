@@ -146,6 +146,7 @@
             font-weight: 500;
             flex-grow: 1;
             font-size: 1.05rem;
+            word-break: break-word;
         }
 
         .game-link:hover {
@@ -224,7 +225,7 @@
     <div class="section-label hidden" id="recentLabel">Recent</div>
     <ul id="recentList"></ul>
 
-    <div class="section-label">All Games</div>
+    <div class="section-label" id="allGamesLabel">Directory (0)</div>
     <ul id="allList"></ul>
 
     <div class="download-bar hidden" id="downloadBar">
@@ -236,11 +237,13 @@
     <script>
         const CONFIG = {
             apiUrl: 'https://api.github.com/repos/CarterDale10000/Deploy-2/git/trees/master?recursive=1',
-            excludedFolders: new Set([
-                'inline-tools', 'file-input-minified', 'file-input', 'pear', 
-                'code-org', 'code-org-v2', 'codehs', 'epicviewer', 'offline', 'images', 'assets'
-            ]),
-            excludedFiles: new Set(['404.html', 'index.html', 'readme.md', 'license', 'epicviewer.htm', 'epicviewer.html']),
+            // Precisely ban only the useless tool directories. 
+            // We DO NOT ban 'offline' here, because games are inside it.
+            bannedPrefixes: [
+                'inline-tools/', 'file-input-minified/', 'file-input/', 'pear/', 
+                'code-org/', 'code-org-v2/', 'codehs/', 'epicviewer/', 'images/', 'assets/'
+            ],
+            bannedExact: ['404.html', 'index.html', 'readme.md', 'license', 'epicviewer.htm', 'epicviewer.html'],
             concurrentDownloads: 5,
             gamesPerZip: 5
         };
@@ -260,14 +263,18 @@
             recentLabel: document.getElementById('recentLabel'),
             recentList: document.getElementById('recentList'),
             allList: document.getElementById('allList'),
+            allGamesLabel: document.getElementById('allGamesLabel'),
             downloadBar: document.getElementById('downloadBar'),
             selectedCount: document.getElementById('selectedCount'),
             downloadBtn: document.getElementById('downloadBtn'),
             syncStatus: document.getElementById('syncStatus')
         };
 
+        // Wipe old bugged caches instantly
+        Object.keys(sessionStorage).forEach(k => { if (k.includes('vercel_directory')) sessionStorage.removeItem(k); });
+
         function getRecentGames() {
-            try { return JSON.parse(localStorage.getItem('recentGames_v5')) || []; } 
+            try { return JSON.parse(localStorage.getItem('recentGames_v6')) || []; } 
             catch { return []; }
         }
 
@@ -276,7 +283,7 @@
             let recent = getRecentGames().filter(r => r !== route);
             recent.unshift(route);
             if (recent.length > 5) recent.pop();
-            localStorage.setItem('recentGames_v5', JSON.stringify(recent));
+            localStorage.setItem('recentGames_v6', JSON.stringify(recent));
             renderGames();
         }
 
@@ -352,6 +359,9 @@
             const a = document.createElement('a');
             a.className = 'game-link';
             
+            // Critical Vercel Routing:
+            // game.route is already properly URI encoded during parsing.
+            // If it's a folder (Unity WebGL), Vercel absolutely requires the trailing slash.
             a.href = game.isFolder ? `/${game.route}/` : `/${game.route}`;
             a.textContent = game.name;
             
@@ -388,30 +398,43 @@
                     visibleCount++;
                 }
             });
-
+            
+            DOM.allGamesLabel.textContent = `Directory (${state.games.length})`;
             const allSelected = visibleCount > 0 && Array.from(document.querySelectorAll('#allList input[type="checkbox"]')).every(cb => cb.checked);
             DOM.selectAllBtn.textContent = allSelected && visibleCount > 0 ? 'Deselect All' : 'Select All';
         }
 
         function processTreeData(tree) {
             state.fullTree = tree;
-            const discovered = [];
-            const gameFolders = new Set();
+            const discoveredGames = [];
+            const gameFolderPaths = new Set();
 
-            tree.forEach(item => {
-                if (item.type !== 'blob') return;
-                const lower = item.path.toLowerCase();
+            // 1. Filter out all the known junk tools immediately so they don't corrupt the list
+            const validHtmlFiles = tree.filter(item => {
+                if (item.type !== 'blob') return false;
+                const pathLower = item.path.toLowerCase();
                 
-                if (lower.endsWith('/index.html') || lower.endsWith('/index.htm')) {
+                // Only process HTML files
+                if (!pathLower.endsWith('.html') && !pathLower.endsWith('.htm')) return false;
+                // Exclude the absolute root indexes/404s
+                if (CONFIG.bannedExact.includes(pathLower)) return false;
+                
+                // Exclude any file that lives inside a banned tool folder
+                for (const prefix of CONFIG.bannedPrefixes) {
+                    if (pathLower.startsWith(prefix)) return false;
+                }
+                return true;
+            });
+
+            // 2. First Pass: Find true "Folder Games" (Any folder with an index.html)
+            validHtmlFiles.forEach(item => {
+                const pathLower = item.path.toLowerCase();
+                if (pathLower.endsWith('/index.html') || pathLower.endsWith('/index.htm')) {
                     const fullFolderPath = item.path.substring(0, item.path.lastIndexOf('/'));
-                    const folderName = fullFolderPath.split('/').pop(); 
+                    const folderName = fullFolderPath.split('/').pop();
                     
-                    // Exclude root utility folders, but process their children if they contain nested games.
-                    // If the IMMEDIATE folder name matches an exclusion, we skip it as a game entry.
-                    if (CONFIG.excludedFolders.has(folderName.toLowerCase())) return;
-                    
-                    gameFolders.add(fullFolderPath);
-                    discovered.push({
+                    gameFolderPaths.add(fullFolderPath);
+                    discoveredGames.push({
                         route: fullFolderPath.split('/').map(encodeURIComponent).join('/'),
                         name: formatName(folderName),
                         isFolder: true,
@@ -420,26 +443,27 @@
                 }
             });
 
-            tree.forEach(item => {
-                if (item.type !== 'blob') return;
-                const lower = item.path.toLowerCase();
-                
-                if (lower.endsWith('.html') || lower.endsWith('.htm')) {
-                    const parts = item.path.split('/');
-                    const filename = parts.pop();
-                    const parentFolder = parts.join('/');
+            // 3. Second Pass: Find "Standalone HTML Games" (Files that aren't inside a known game folder)
+            validHtmlFiles.forEach(item => {
+                const pathLower = item.path.toLowerCase();
+                if (!(pathLower.endsWith('/index.html') || pathLower.endsWith('/index.htm'))) {
+                    const parentFolder = item.path.includes('/') ? item.path.substring(0, item.path.lastIndexOf('/')) : '';
+                    const filename = item.path.split('/').pop();
                     
-                    if (CONFIG.excludedFiles.has(filename.toLowerCase())) return;
-                    
-                    let isInGameFolder = false;
+                    // Check if this HTML file belongs to a game folder we already identified
+                    let isInsideGameFolder = false;
                     let currentPath = parentFolder;
                     while (currentPath) {
-                        if (gameFolders.has(currentPath)) { isInGameFolder = true; break; }
-                        currentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+                        if (gameFolderPaths.has(currentPath)) {
+                            isInsideGameFolder = true;
+                            break;
+                        }
+                        currentPath = currentPath.includes('/') ? currentPath.substring(0, currentPath.lastIndexOf('/')) : '';
                     }
 
-                    if (!isInGameFolder && !CONFIG.excludedFolders.has(parentFolder.toLowerCase())) {
-                        discovered.push({
+                    // If it's truly standalone, add it to the list
+                    if (!isInsideGameFolder) {
+                        discoveredGames.push({
                             route: item.path.split('/').map(encodeURIComponent).join('/'),
                             name: formatName(filename.replace(/\.(html|htm)$/i, '')),
                             isFolder: false,
@@ -449,13 +473,14 @@
                 }
             });
 
-            const uniqueGames = Array.from(new Map(discovered.map(g => [g.route, g])).values());
+            // De-duplicate and sort alphabetically
+            const uniqueGames = Array.from(new Map(discoveredGames.map(g => [g.route, g])).values());
             state.games = uniqueGames.sort((a, b) => a.name.localeCompare(b.name));
             renderGames();
         }
 
         async function fetchGamesList() {
-            const CACHE_KEY = 'vercel_directory_cache_v5'; 
+            const CACHE_KEY = 'vercel_directory_cache_v6'; 
             const cached = sessionStorage.getItem(CACHE_KEY);
             
             if (cached) {
