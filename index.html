@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Game Directory</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -19,14 +20,57 @@
             text-transform: uppercase;
             color: #555;
         }
-        #search {
-            width: 100%;
-            padding: 12px;
+        .controls {
+            display: flex;
+            gap: 10px;
             margin-bottom: 20px;
+        }
+        #search {
+            flex-grow: 1;
+            padding: 12px;
             font-size: 16px;
             border: 1px solid #ccc;
             border-radius: 4px;
             box-sizing: border-box;
+        }
+        button {
+            padding: 12px 20px;
+            font-size: 16px;
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            color: #333;
+        }
+        button:hover {
+            background-color: #eee;
+        }
+        #downloadPanel {
+            display: none;
+            background: #e9ecef;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            align-items: center;
+            justify-content: space-between;
+        }
+        #downloadPanel.active {
+            display: flex;
+        }
+        .btn-primary {
+            background-color: #0056b3;
+            color: white;
+            border-color: #004494;
+            font-weight: bold;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background-color: #004494;
+        }
+        .btn-primary:disabled {
+            background-color: #888;
+            border-color: #777;
+            cursor: not-allowed;
         }
         ul {
             list-style-type: none;
@@ -38,12 +82,27 @@
         }
         li {
             border-bottom: 1px solid #eee;
+            display: flex;
+            align-items: center;
         }
         li:last-child {
             border-bottom: none;
         }
+        .checkbox-container {
+            display: none;
+            padding-left: 20px;
+        }
+        body.select-mode .checkbox-container {
+            display: block;
+        }
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
         a {
             display: block;
+            flex-grow: 1;
             padding: 15px 20px;
             text-decoration: none;
             color: #0056b3;
@@ -53,6 +112,9 @@
         a:hover {
             background-color: #f1f1f1;
             color: #003d82;
+        }
+        body.select-mode a {
+            pointer-events: none;
         }
         .meta-info {
             font-size: 14px;
@@ -65,102 +127,254 @@
 <body>
 
     <h1>Directory (<span id="count">0</span>)</h1>
-    <input type="text" id="search" placeholder="Search games...">
-    <span class="meta-info" id="status">Loading directory...</span>
+    
+    <div class="controls">
+        <input type="text" id="search" placeholder="Search games...">
+        <button id="toggleSelectBtn">Select Mode</button>
+    </div>
+
+    <div id="downloadPanel">
+        <span id="selectStatus">0 selected</span>
+        <div>
+            <button id="selectAllBtn">Select All</button>
+            <button id="downloadBtn" class="btn-primary" disabled>Download ZIP</button>
+        </div>
+    </div>
+
+    <span class="meta-info" id="status">Scanning repository...</span>
     
     <ul id="game-list"></ul>
 
     <script>
-        const REPO_URL = 'https://api.github.com/repos/CarterDale10000/Deploy-2/git/trees/master?recursive=1';
-        
-        // Folders and files to completely ignore
-        const IGNORE_LIST = [
-            'code-org', 'code-org-v2', 'codehs', 'file-input', 'file-input-minified',
-            'pear', 'images', 'assets', '404.html', 'index.html', 'readme.md', 'license'
-        ];
+        const CONFIG = {
+            repoUrl: 'https://api.github.com/repos/CarterDale10000/Deploy-2/git/trees/master?recursive=1',
+            ignorePaths: [
+                'code-org/', 'code-org-v2/', 'codehs/', 'file-input/', 
+                'file-input-minified/', 'pear/', 'epicviewer/', 'images/', 'assets/'
+            ],
+            ignoreExact: ['404.html', 'index.html', 'readme.md', 'license'],
+            concurrentDownloads: 5
+        };
 
-        let allGames = [];
-        const gameList = document.getElementById('game-list');
-        const searchInput = document.getElementById('search');
-        const countDisplay = document.getElementById('count');
-        const statusDisplay = document.getElementById('status');
+        const state = {
+            games: [],
+            fullTree: [],
+            selectedPaths: new Set(),
+            isSelectMode: false
+        };
 
-        function formatName(pathStr, isFolder) {
-            let rawName = isFolder ? pathStr.split('/').slice(-2, -1)[0] : pathStr.split('/').pop().replace(/\.html?$/i, '');
-            return rawName.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
+        const DOM = {
+            search: document.getElementById('search'),
+            list: document.getElementById('game-list'),
+            count: document.getElementById('count'),
+            status: document.getElementById('status'),
+            toggleSelectBtn: document.getElementById('toggleSelectBtn'),
+            downloadPanel: document.getElementById('downloadPanel'),
+            selectStatus: document.getElementById('selectStatus'),
+            selectAllBtn: document.getElementById('selectAllBtn'),
+            downloadBtn: document.getElementById('downloadBtn')
+        };
+
+        function cleanName(path, isFolder) {
+            let name = isFolder ? path.split('/').slice(-2, -1)[0] : path.split('/').pop().replace(/\.html?$/i, '');
+            name = name.replace(/12m/gi, '');
+            const overrides = { 'sm64': 'Super Mario 64', 'fnaf': "Five Nights at Freddy's", 'pvz': 'Plants vs Zombies', 'bitlife': 'BitLife', 'bitlifetwo': 'BitLife 2' };
+            let norm = name.toLowerCase();
+            if (overrides[norm]) return overrides[norm];
+            return name.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
+        }
+
+        function processTreeData(treeData) {
+            state.fullTree = treeData;
+            const rawGames = [];
+            const folders = new Set();
+
+            const htmlFiles = treeData.filter(item => {
+                if (item.type !== 'blob') return false;
+                const p = item.path.toLowerCase();
+                if (!p.endsWith('.html') && !p.endsWith('.htm')) return false;
+                if (CONFIG.ignoreExact.includes(p)) return false;
+                for (const ignore of CONFIG.ignorePaths) if (p.startsWith(ignore)) return false;
+                return true;
+            });
+
+            htmlFiles.forEach(file => {
+                const p = file.path.toLowerCase();
+                if (p.endsWith('/index.html') || p.endsWith('/index.htm')) {
+                    const fPath = file.path.substring(0, file.path.lastIndexOf('/'));
+                    folders.add(fPath);
+                    rawGames.push({
+                        name: cleanName(file.path, true),
+                        route: `/${fPath.split('/').map(encodeURIComponent).join('/')}/`,
+                        assetPrefix: fPath + '/',
+                        isFolder: true
+                    });
+                }
+            });
+
+            htmlFiles.forEach(file => {
+                const p = file.path.toLowerCase();
+                if (!(p.endsWith('/index.html') || p.endsWith('/index.htm'))) {
+                    let inside = false;
+                    let parent = file.path.includes('/') ? file.path.substring(0, file.path.lastIndexOf('/')) : '';
+                    let curr = parent;
+                    while (curr) {
+                        if (folders.has(curr)) { inside = true; break; }
+                        curr = curr.includes('/') ? curr.substring(0, curr.lastIndexOf('/')) : '';
+                    }
+                    if (!inside) {
+                        rawGames.push({
+                            name: cleanName(file.path, false),
+                            route: `/${file.path.split('/').map(encodeURIComponent).join('/')}`,
+                            assetPrefix: file.path,
+                            isFolder: false
+                        });
+                    }
+                }
+            });
+
+            const unique = new Map();
+            rawGames.forEach(g => unique.set(g.route, g));
+            state.games = Array.from(unique.values()).sort((a, b) => a.name.localeCompare(b.name));
+        }
+
+        function updateUI() {
+            DOM.selectStatus.textContent = `${state.selectedPaths.size} selected`;
+            DOM.downloadBtn.disabled = state.selectedPaths.size === 0;
+            DOM.selectAllBtn.textContent = state.selectedPaths.size > 0 && state.selectedPaths.size === document.querySelectorAll('#game-list input[type="checkbox"]').length ? 'Deselect All' : 'Select All';
+        }
+
+        function toggleSelection(route, force) {
+            if (force === true) state.selectedPaths.add(route);
+            else if (force === false) state.selectedPaths.delete(route);
+            else state.selectedPaths.has(route) ? state.selectedPaths.delete(route) : state.selectedPaths.add(route);
+            updateUI();
         }
 
         function renderList(query = '') {
-            gameList.innerHTML = '';
-            const filtered = allGames.filter(g => g.name.toLowerCase().includes(query.toLowerCase()));
+            DOM.list.innerHTML = '';
+            const filtered = state.games.filter(g => g.name.toLowerCase().includes(query.toLowerCase()));
             
             filtered.forEach(game => {
                 const li = document.createElement('li');
+                
+                const cbContainer = document.createElement('div');
+                cbContainer.className = 'checkbox-container';
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.checked = state.selectedPaths.has(game.route);
+                
+                cb.addEventListener('change', (e) => toggleSelection(game.route, e.target.checked));
+                cbContainer.appendChild(cb);
+
+                li.addEventListener('click', (e) => {
+                    if (state.isSelectMode && e.target !== cb) {
+                        cb.checked = !cb.checked;
+                        toggleSelection(game.route, cb.checked);
+                    }
+                });
+
                 const a = document.createElement('a');
-                // Ensure folders get a trailing slash for proper asset loading on Netlify/Vercel
-                a.href = `/${game.path}${game.isFolder ? '/' : ''}`;
+                a.href = game.route;
                 a.textContent = game.name;
+
+                li.appendChild(cbContainer);
                 li.appendChild(a);
-                gameList.appendChild(li);
+                DOM.list.appendChild(li);
             });
             
-            countDisplay.textContent = filtered.length;
+            DOM.count.textContent = filtered.length;
+            updateUI();
         }
 
         async function init() {
             try {
-                const response = await fetch(REPO_URL);
+                const response = await fetch(CONFIG.repoUrl);
                 if (!response.ok) throw new Error('Network response was not ok');
                 const data = await response.json();
-
-                const gamesMap = new Map();
-
-                data.tree.forEach(item => {
-                    if (item.type !== 'blob') return;
-                    
-                    const pathLower = item.path.toLowerCase();
-                    if (!pathLower.endsWith('.html') && !pathLower.endsWith('.htm')) return;
-
-                    // Check against ignore list
-                    if (IGNORE_LIST.some(ignored => pathLower.includes(ignored) || pathLower === ignored)) return;
-
-                    const isIndex = pathLower.endsWith('/index.html') || pathLower.endsWith('/index.htm');
-                    
-                    if (isIndex) {
-                        // It's a folder game
-                        const folderPath = item.path.substring(0, item.path.lastIndexOf('/'));
-                        gamesMap.set(folderPath, {
-                            name: formatName(item.path, true),
-                            path: folderPath,
-                            isFolder: true
-                        });
-                    } else {
-                        // It's a standalone HTML file
-                        // Only add if it's not already part of a known game folder
-                        const parentFolder = item.path.includes('/') ? item.path.substring(0, item.path.lastIndexOf('/')) : '';
-                        if (!gamesMap.has(parentFolder)) {
-                            gamesMap.set(item.path, {
-                                name: formatName(item.path, false),
-                                path: item.path,
-                                isFolder: false
-                            });
-                        }
-                    }
-                });
-
-                allGames = Array.from(gamesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
-                statusDisplay.textContent = 'Directory synced.';
-                setTimeout(() => statusDisplay.style.display = 'none', 2000);
+                processTreeData(data.tree);
+                DOM.status.style.display = 'none';
                 renderList();
-
             } catch (error) {
-                statusDisplay.textContent = 'Failed to load repository. Check connection or API limits.';
-                statusDisplay.style.color = 'red';
-                console.error('Error fetching repo:', error);
+                DOM.status.textContent = 'Failed to load repository. Check connection or API limits.';
+                DOM.status.style.color = 'red';
             }
         }
 
-        searchInput.addEventListener('input', (e) => renderList(e.target.value));
+        DOM.toggleSelectBtn.addEventListener('click', () => {
+            state.isSelectMode = !state.isSelectMode;
+            document.body.classList.toggle('select-mode', state.isSelectMode);
+            DOM.downloadPanel.classList.toggle('active', state.isSelectMode);
+            DOM.toggleSelectBtn.textContent = state.isSelectMode ? 'Cancel Selection' : 'Select Mode';
+            if (!state.isSelectMode) {
+                state.selectedPaths.clear();
+                renderList(DOM.search.value);
+            }
+        });
+
+        DOM.selectAllBtn.addEventListener('click', () => {
+            const checkboxes = Array.from(document.querySelectorAll('#game-list input[type="checkbox"]'));
+            const allSelected = checkboxes.length > 0 && checkboxes.every(cb => cb.checked);
+            checkboxes.forEach(cb => {
+                cb.checked = !allSelected;
+                const route = cb.closest('li').querySelector('a').getAttribute('href');
+                toggleSelection(route, !allSelected);
+            });
+        });
+
+        DOM.downloadBtn.addEventListener('click', async () => {
+            if (state.selectedPaths.size === 0) return;
+            const selectedGames = Array.from(state.selectedPaths).map(r => state.games.find(g => g.route === r));
+            
+            DOM.downloadBtn.disabled = true;
+            DOM.selectAllBtn.disabled = true;
+            const originalText = DOM.downloadBtn.textContent;
+
+            try {
+                const zip = new JSZip();
+                let processed = 0;
+
+                for (const game of selectedGames) {
+                    processed++;
+                    DOM.downloadBtn.textContent = `Gathering ${processed}/${selectedGames.length}...`;
+                    
+                    const assets = game.isFolder 
+                        ? state.fullTree.filter(item => item.type === 'blob' && item.path.startsWith(game.assetPrefix)).map(i => i.path)
+                        : [decodeURIComponent(game.route.substring(1))];
+                    
+                    for (let j = 0; j < assets.length; j += CONFIG.concurrentDownloads) {
+                        await Promise.all(assets.slice(j, j + CONFIG.concurrentDownloads).map(async (assetPath) => {
+                            try {
+                                const assetUrl = `/${assetPath.split('/').map(encodeURIComponent).join('/')}`;
+                                const res = await fetch(assetUrl);
+                                if (res.ok) zip.file(assetPath, await res.blob());
+                            } catch (e) { console.warn(`Skipped ${assetPath}`); }
+                        }));
+                    }
+                }
+
+                DOM.downloadBtn.textContent = `Compressing ZIP...`;
+                const content = await zip.generateAsync({ type: 'blob', compression: "STORE" });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = `Game_Archive.zip`;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                URL.revokeObjectURL(link.href);
+
+                DOM.toggleSelectBtn.click(); // Turn off select mode after success
+            } catch (err) {
+                alert(`Download failed. Try selecting fewer games.`);
+            } finally {
+                DOM.downloadBtn.textContent = originalText;
+                updateUI();
+                DOM.selectAllBtn.disabled = false;
+            }
+        });
+
+        DOM.search.addEventListener('input', (e) => renderList(e.target.value));
         
         init();
     </script>
