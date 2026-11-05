@@ -3,574 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'><circle cx='128' cy='128' r='128' fill='%23000'/><circle cx='128' cy='128' r='70' fill='none' stroke='white' stroke-width='24' stroke-dasharray='30 20'/></svg>">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <title>Game Directory</title>
     <style>
-        :root {
-            --primary: #000000;
-            --primary-hover: #333333;
-            --bg: #fafafa;
-            --surface: #ffffff;
-            --border: #eaeaea;
-            --text-main: #111111;
-            --text-muted: #666666;
-            --success: #28a745;
-        }
-
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg);
-            color: var(--text-main);
-            line-height: 1.5;
+            font-family: Arial, sans-serif;
             max-width: 800px;
             margin: 0 auto;
-            padding: 30px 20px 100px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            color: #333;
         }
-
-        .header-controls {
-            position: sticky;
-            top: 0;
-            background: var(--bg);
-            padding: 10px 0 20px;
-            z-index: 100;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-
-        input[type="text"] {
-            flex-grow: 1;
-            padding: 14px 16px;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 1rem;
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
-
-        input[type="text"]:focus {
-            border-color: var(--primary);
-        }
-
-        .btn-tiny {
-            width: 48px;
-            height: 48px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background-color: var(--surface);
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            flex-shrink: 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        }
-
-        .btn-tiny:hover {
-            background-color: #f0f0f0;
-            color: var(--text-main);
-        }
-
-        .btn-tiny.active {
-            background-color: var(--primary);
-            border-color: var(--primary);
-            color: white;
-        }
-
-        .section-label {
-            font-weight: 600;
-            font-size: 1.1rem;
-            margin: 30px 0 15px;
-            color: var(--text-muted);
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            color: #555;
         }
-
-        .section-label.hidden {
-            display: none;
+        #search {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
         }
-
         ul {
-            list-style: none;
+            list-style-type: none;
             padding: 0;
             margin: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
         }
-
         li {
-            display: flex;
-            align-items: center;
-            background: var(--surface);
-            padding: 16px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            border-bottom: 1px solid #eee;
         }
-
-        li:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        li:last-child {
+            border-bottom: none;
         }
-
-        body.select-mode li {
-            cursor: pointer;
-        }
-
-        .checkbox-wrapper {
-            display: none;
-            align-items: center;
-            justify-content: center;
-            margin-right: 16px;
-        }
-
-        body.select-mode .checkbox-wrapper {
-            display: flex;
-        }
-
-        input[type="checkbox"] {
-            cursor: pointer;
-            accent-color: var(--primary);
-            width: 18px;
-            height: 18px;
-        }
-
-        .game-link {
-            color: var(--primary);
+        a {
+            display: block;
+            padding: 15px 20px;
             text-decoration: none;
-            font-weight: 500;
-            flex-grow: 1;
-            font-size: 1.05rem;
-            word-break: break-word;
+            color: #0056b3;
+            font-size: 16px;
+            font-weight: bold;
         }
-
-        .game-link:hover {
-            text-decoration: underline;
+        a:hover {
+            background-color: #f1f1f1;
+            color: #003d82;
         }
-
-        body.select-mode .game-link {
-            pointer-events: none;
-        }
-
-        .download-bar {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #111;
-            color: #fff;
-            padding: 16px 24px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            z-index: 1000;
-            width: max-content;
-            max-width: 90%;
-            transition: opacity 0.3s, transform 0.3s;
-        }
-
-        .download-bar.hidden { 
-            opacity: 0;
-            pointer-events: none;
-            transform: translate(-50%, 20px);
-        }
-
-        .btn {
-            padding: 10px 16px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.95rem;
-            transition: all 0.2s;
-        }
-
-        .btn-success { background-color: var(--success); color: white; }
-        .btn-success:hover:not(:disabled) { background-color: #218838; }
-        .btn-success:disabled { background-color: #444; color: #888; cursor: not-allowed; }
-        
-        .btn-outline { background: transparent; border: 1px solid #666; color: #fff; }
-        .btn-outline:hover { background: #333; }
-        
-        .sync-status {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            text-align: right;
-            margin-top: 4px;
-            height: 16px;
+        .meta-info {
+            font-size: 14px;
+            color: #777;
+            margin-bottom: 10px;
+            display: block;
         }
     </style>
 </head>
 <body>
 
-    <div class="header-controls">
-        <input type="text" id="searchInput" placeholder="Search games...">
-        <button class="btn-tiny" id="toggleModeBtn" aria-label="Toggle Selection Mode">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 11 12 14 22 4"></polyline>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-            </svg>
-        </button>
-    </div>
+    <h1>Directory (<span id="count">0</span>)</h1>
+    <input type="text" id="search" placeholder="Search games...">
+    <span class="meta-info" id="status">Loading directory...</span>
     
-    <div class="sync-status" id="syncStatus"></div>
-
-    <div class="section-label hidden" id="recentLabel">Recent</div>
-    <ul id="recentList"></ul>
-
-    <div class="section-label" id="allGamesLabel">Directory (0)</div>
-    <ul id="allList"></ul>
-
-    <div class="download-bar hidden" id="downloadBar">
-        <button class="btn btn-outline" id="selectAllBtn">Select All</button>
-        <span id="selectedCount" style="font-weight: 500;">0 selected</span>
-        <button class="btn btn-success" id="downloadBtn" disabled>Download (.ZIP)</button>
-    </div>
+    <ul id="game-list"></ul>
 
     <script>
-        const CONFIG = {
-            apiUrl: 'https://api.github.com/repos/CarterDale10000/Deploy-2/git/trees/master?recursive=1',
-            // Precisely ban only the useless tool directories. 
-            // We DO NOT ban 'offline' here, because games are inside it.
-            bannedPrefixes: [
-                'inline-tools/', 'file-input-minified/', 'file-input/', 'pear/', 
-                'code-org/', 'code-org-v2/', 'codehs/', 'epicviewer/', 'images/', 'assets/'
-            ],
-            bannedExact: ['404.html', 'index.html', 'readme.md', 'license', 'epicviewer.htm', 'epicviewer.html'],
-            concurrentDownloads: 5,
-            gamesPerZip: 5
-        };
+        const REPO_URL = 'https://api.github.com/repos/CarterDale10000/Deploy-2/git/trees/master?recursive=1';
+        
+        // Folders and files to completely ignore
+        const IGNORE_LIST = [
+            'code-org', 'code-org-v2', 'codehs', 'file-input', 'file-input-minified',
+            'pear', 'images', 'assets', '404.html', 'index.html', 'readme.md', 'license'
+        ];
 
-        const state = {
-            fullTree: [],
-            games: [],
-            selectedPaths: new Set(),
-            searchQuery: '',
-            isSelectMode: false
-        };
+        let allGames = [];
+        const gameList = document.getElementById('game-list');
+        const searchInput = document.getElementById('search');
+        const countDisplay = document.getElementById('count');
+        const statusDisplay = document.getElementById('status');
 
-        const DOM = {
-            searchInput: document.getElementById('searchInput'),
-            toggleModeBtn: document.getElementById('toggleModeBtn'),
-            selectAllBtn: document.getElementById('selectAllBtn'),
-            recentLabel: document.getElementById('recentLabel'),
-            recentList: document.getElementById('recentList'),
-            allList: document.getElementById('allList'),
-            allGamesLabel: document.getElementById('allGamesLabel'),
-            downloadBar: document.getElementById('downloadBar'),
-            selectedCount: document.getElementById('selectedCount'),
-            downloadBtn: document.getElementById('downloadBtn'),
-            syncStatus: document.getElementById('syncStatus')
-        };
-
-        // Wipe old bugged caches instantly
-        Object.keys(sessionStorage).forEach(k => { if (k.includes('vercel_directory')) sessionStorage.removeItem(k); });
-
-        function getRecentGames() {
-            try { return JSON.parse(localStorage.getItem('recentGames_v6')) || []; } 
-            catch { return []; }
+        function formatName(pathStr, isFolder) {
+            let rawName = isFolder ? pathStr.split('/').slice(-2, -1)[0] : pathStr.split('/').pop().replace(/\.html?$/i, '');
+            return rawName.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
         }
 
-        function saveRecentGame(route) {
-            if (state.isSelectMode) return; 
-            let recent = getRecentGames().filter(r => r !== route);
-            recent.unshift(route);
-            if (recent.length > 5) recent.pop();
-            localStorage.setItem('recentGames_v6', JSON.stringify(recent));
-            renderGames();
-        }
-
-        function formatName(rawName) {
-            const cleanName = rawName.replace(/12m/gi, '');
-            const overrides = { 
-                'sm64': 'Super Mario 64', 
-                'fnaf': "Five Nights at Freddy's", 
-                'pvz': 'Plants vs Zombies',
-                'bitlife': 'BitLife',
-                'bitlifetwo': 'BitLife'
-            };
-            if (overrides[cleanName.toLowerCase()]) return overrides[cleanName.toLowerCase()];
-            return cleanName.replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
-        }
-
-        function updateDownloadUI() {
-            const count = state.selectedPaths.size;
-            DOM.selectedCount.textContent = `${count} selected`;
-            DOM.downloadBtn.disabled = count === 0;
-            DOM.downloadBar.classList.toggle('hidden', !state.isSelectMode);
-        }
-
-        function toggleSelection(route, isChecked) {
-            isChecked ? state.selectedPaths.add(route) : state.selectedPaths.delete(route);
-            updateDownloadUI();
-        }
-
-        function toggleSelectMode() {
-            state.isSelectMode = !state.isSelectMode;
-            document.body.classList.toggle('select-mode', state.isSelectMode);
-            DOM.toggleModeBtn.classList.toggle('active', state.isSelectMode);
+        function renderList(query = '') {
+            gameList.innerHTML = '';
+            const filtered = allGames.filter(g => g.name.toLowerCase().includes(query.toLowerCase()));
             
-            if (!state.isSelectMode) {
-                state.selectedPaths.clear();
-                renderGames();
-            }
-            updateDownloadUI();
-        }
-
-        function handleSelectAll() {
-            const checkboxes = Array.from(document.querySelectorAll('#allList input[type="checkbox"]'));
-            const allSelected = checkboxes.length > 0 && checkboxes.every(cb => cb.checked);
-
-            checkboxes.forEach(cb => {
-                cb.checked = !allSelected;
-                toggleSelection(cb.dataset.route, !allSelected);
-            });
-            DOM.selectAllBtn.textContent = allSelected ? 'Select All' : 'Deselect All';
-        }
-
-        function createGameElement(game, isRecent = false) {
-            const li = document.createElement('li');
-            
-            const checkboxWrapper = document.createElement('div');
-            checkboxWrapper.className = 'checkbox-wrapper';
-            
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.dataset.route = game.route;
-            checkbox.checked = state.selectedPaths.has(game.route);
-            
-            li.addEventListener('click', (e) => {
-                if (state.isSelectMode && e.target !== checkbox) {
-                    checkbox.checked = !checkbox.checked;
-                    toggleSelection(game.route, checkbox.checked);
-                }
-            });
-
-            checkbox.addEventListener('change', e => toggleSelection(game.route, e.target.checked));
-            checkboxWrapper.appendChild(checkbox);
-
-            const a = document.createElement('a');
-            a.className = 'game-link';
-            
-            // Critical Vercel Routing:
-            // game.route is already properly URI encoded during parsing.
-            // If it's a folder (Unity WebGL), Vercel absolutely requires the trailing slash.
-            a.href = game.isFolder ? `/${game.route}/` : `/${game.route}`;
-            a.textContent = game.name;
-            
-            a.addEventListener('click', (e) => {
-                if (state.isSelectMode) e.preventDefault();
-                else saveRecentGame(game.route);
-            });
-
-            li.append(checkboxWrapper, a);
-            return li;
-        }
-
-        function renderGames() {
-            const query = state.searchQuery.toLowerCase();
-            const recentRoutes = getRecentGames();
-            
-            DOM.recentList.innerHTML = '';
-            DOM.allList.innerHTML = '';
-
-            if (query.length === 0 && recentRoutes.length > 0) {
-                DOM.recentLabel.classList.remove('hidden');
-                recentRoutes.forEach(route => {
-                    const game = state.games.find(g => g.route === route);
-                    if (game) DOM.recentList.appendChild(createGameElement(game, true));
-                });
-            } else {
-                DOM.recentLabel.classList.add('hidden');
-            }
-
-            let visibleCount = 0;
-            state.games.forEach(game => {
-                if (game.name.toLowerCase().includes(query)) {
-                    DOM.allList.appendChild(createGameElement(game));
-                    visibleCount++;
-                }
+            filtered.forEach(game => {
+                const li = document.createElement('li');
+                const a = document.createElement('a');
+                // Ensure folders get a trailing slash for proper asset loading on Netlify/Vercel
+                a.href = `/${game.path}${game.isFolder ? '/' : ''}`;
+                a.textContent = game.name;
+                li.appendChild(a);
+                gameList.appendChild(li);
             });
             
-            DOM.allGamesLabel.textContent = `Directory (${state.games.length})`;
-            const allSelected = visibleCount > 0 && Array.from(document.querySelectorAll('#allList input[type="checkbox"]')).every(cb => cb.checked);
-            DOM.selectAllBtn.textContent = allSelected && visibleCount > 0 ? 'Deselect All' : 'Select All';
+            countDisplay.textContent = filtered.length;
         }
 
-        function processTreeData(tree) {
-            state.fullTree = tree;
-            const discoveredGames = [];
-            const gameFolderPaths = new Set();
-
-            // 1. Filter out all the known junk tools immediately so they don't corrupt the list
-            const validHtmlFiles = tree.filter(item => {
-                if (item.type !== 'blob') return false;
-                const pathLower = item.path.toLowerCase();
-                
-                // Only process HTML files
-                if (!pathLower.endsWith('.html') && !pathLower.endsWith('.htm')) return false;
-                // Exclude the absolute root indexes/404s
-                if (CONFIG.bannedExact.includes(pathLower)) return false;
-                
-                // Exclude any file that lives inside a banned tool folder
-                for (const prefix of CONFIG.bannedPrefixes) {
-                    if (pathLower.startsWith(prefix)) return false;
-                }
-                return true;
-            });
-
-            // 2. First Pass: Find true "Folder Games" (Any folder with an index.html)
-            validHtmlFiles.forEach(item => {
-                const pathLower = item.path.toLowerCase();
-                if (pathLower.endsWith('/index.html') || pathLower.endsWith('/index.htm')) {
-                    const fullFolderPath = item.path.substring(0, item.path.lastIndexOf('/'));
-                    const folderName = fullFolderPath.split('/').pop();
-                    
-                    gameFolderPaths.add(fullFolderPath);
-                    discoveredGames.push({
-                        route: fullFolderPath.split('/').map(encodeURIComponent).join('/'),
-                        name: formatName(folderName),
-                        isFolder: true,
-                        assetPrefix: fullFolderPath + '/'
-                    });
-                }
-            });
-
-            // 3. Second Pass: Find "Standalone HTML Games" (Files that aren't inside a known game folder)
-            validHtmlFiles.forEach(item => {
-                const pathLower = item.path.toLowerCase();
-                if (!(pathLower.endsWith('/index.html') || pathLower.endsWith('/index.htm'))) {
-                    const parentFolder = item.path.includes('/') ? item.path.substring(0, item.path.lastIndexOf('/')) : '';
-                    const filename = item.path.split('/').pop();
-                    
-                    // Check if this HTML file belongs to a game folder we already identified
-                    let isInsideGameFolder = false;
-                    let currentPath = parentFolder;
-                    while (currentPath) {
-                        if (gameFolderPaths.has(currentPath)) {
-                            isInsideGameFolder = true;
-                            break;
-                        }
-                        currentPath = currentPath.includes('/') ? currentPath.substring(0, currentPath.lastIndexOf('/')) : '';
-                    }
-
-                    // If it's truly standalone, add it to the list
-                    if (!isInsideGameFolder) {
-                        discoveredGames.push({
-                            route: item.path.split('/').map(encodeURIComponent).join('/'),
-                            name: formatName(filename.replace(/\.(html|htm)$/i, '')),
-                            isFolder: false,
-                            assetPrefix: item.path
-                        });
-                    }
-                }
-            });
-
-            // De-duplicate and sort alphabetically
-            const uniqueGames = Array.from(new Map(discoveredGames.map(g => [g.route, g])).values());
-            state.games = uniqueGames.sort((a, b) => a.name.localeCompare(b.name));
-            renderGames();
-        }
-
-        async function fetchGamesList() {
-            const CACHE_KEY = 'vercel_directory_cache_v6'; 
-            const cached = sessionStorage.getItem(CACHE_KEY);
-            
-            if (cached) {
-                processTreeData(JSON.parse(cached).tree);
-                DOM.syncStatus.textContent = "Directory loaded.";
-            } else {
-                DOM.allList.innerHTML = `<li style="justify-content: center; color: var(--text-muted);">Scanning repository...</li>`;
-                try {
-                    const res = await fetch(CONFIG.apiUrl);
-                    if (!res.ok) throw new Error();
-                    const data = await res.json();
-                    
-                    sessionStorage.setItem(CACHE_KEY, JSON.stringify(data));
-                    processTreeData(data.tree);
-                    DOM.syncStatus.textContent = "Directory synced.";
-                } catch (err) {
-                    DOM.allList.innerHTML = `<li style="color: #dc3545;">Failed to load directory. GitHub API limit reached.</li>`;
-                }
-            }
-            setTimeout(() => DOM.syncStatus.textContent = "", 3000);
-        }
-
-        async function executeDownload() {
-            if (state.selectedPaths.size === 0) return;
-            const selectedGames = Array.from(state.selectedPaths).map(r => state.games.find(g => g.route === r));
-            let processed = 0;
-            
-            DOM.downloadBtn.disabled = true;
-            DOM.selectAllBtn.disabled = true;
-
+        async function init() {
             try {
-                for (let i = 0; i < selectedGames.length; i += CONFIG.gamesPerZip) {
-                    const chunk = selectedGames.slice(i, i + CONFIG.gamesPerZip);
-                    const zip = new JSZip();
+                const response = await fetch(REPO_URL);
+                if (!response.ok) throw new Error('Network response was not ok');
+                const data = await response.json();
 
-                    for (const game of chunk) {
-                        processed++;
-                        DOM.downloadBtn.textContent = `Gathering ${game.name} (${processed}/${selectedGames.length})...`;
-                        
-                        const assets = game.isFolder 
-                            ? state.fullTree.filter(item => item.type === 'blob' && item.path.startsWith(game.assetPrefix)).map(i => i.path)
-                            : [decodeURIComponent(game.route)];
-                        
-                        for (let j = 0; j < assets.length; j += CONFIG.concurrentDownloads) {
-                            await Promise.all(assets.slice(j, j + CONFIG.concurrentDownloads).map(async (assetPath) => {
-                                try {
-                                    const assetUrl = `/${assetPath.split('/').map(encodeURIComponent).join('/')}`;
-                                    const res = await fetch(assetUrl);
-                                    if (!res.ok) throw new Error();
-                                    zip.file(assetPath, await res.blob());
-                                } catch (e) { console.warn(`Skipped ${assetPath}`); }
-                            }));
+                const gamesMap = new Map();
+
+                data.tree.forEach(item => {
+                    if (item.type !== 'blob') return;
+                    
+                    const pathLower = item.path.toLowerCase();
+                    if (!pathLower.endsWith('.html') && !pathLower.endsWith('.htm')) return;
+
+                    // Check against ignore list
+                    if (IGNORE_LIST.some(ignored => pathLower.includes(ignored) || pathLower === ignored)) return;
+
+                    const isIndex = pathLower.endsWith('/index.html') || pathLower.endsWith('/index.htm');
+                    
+                    if (isIndex) {
+                        // It's a folder game
+                        const folderPath = item.path.substring(0, item.path.lastIndexOf('/'));
+                        gamesMap.set(folderPath, {
+                            name: formatName(item.path, true),
+                            path: folderPath,
+                            isFolder: true
+                        });
+                    } else {
+                        // It's a standalone HTML file
+                        // Only add if it's not already part of a known game folder
+                        const parentFolder = item.path.includes('/') ? item.path.substring(0, item.path.lastIndexOf('/')) : '';
+                        if (!gamesMap.has(parentFolder)) {
+                            gamesMap.set(item.path, {
+                                name: formatName(item.path, false),
+                                path: item.path,
+                                isFolder: false
+                            });
                         }
                     }
+                });
 
-                    DOM.downloadBtn.textContent = `Compressing ZIP...`;
-                    const content = await zip.generateAsync({ type: 'blob', compression: "STORE" });
-                    
-                    const link = document.createElement('a');
-                    link.href = URL.createObjectURL(content);
-                    link.download = selectedGames.length > CONFIG.gamesPerZip ? `Games_Part_${Math.floor(i/CONFIG.gamesPerZip)+1}.zip` : `Games_Archive.zip`;
-                    document.body.appendChild(link);
-                    link.click();
-                    link.remove();
-                    URL.revokeObjectURL(link.href);
-                }
-                toggleSelectMode();
-            } catch (err) {
-                alert(`Download interrupted. Try selecting fewer games.`);
-            } finally {
-                updateDownloadUI();
-                DOM.selectAllBtn.disabled = false;
-                DOM.downloadBtn.textContent = 'Download (.ZIP)';
+                allGames = Array.from(gamesMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+                statusDisplay.textContent = 'Directory synced.';
+                setTimeout(() => statusDisplay.style.display = 'none', 2000);
+                renderList();
+
+            } catch (error) {
+                statusDisplay.textContent = 'Failed to load repository. Check connection or API limits.';
+                statusDisplay.style.color = 'red';
+                console.error('Error fetching repo:', error);
             }
         }
 
-        let debounceTimer;
-        DOM.searchInput.addEventListener('input', e => {
-            clearTimeout(debounceTimer);
-            debounceTimer = setTimeout(() => {
-                state.searchQuery = e.target.value.trim();
-                renderGames();
-            }, 250);
-        });
-
-        DOM.toggleModeBtn.addEventListener('click', toggleSelectMode);
-        DOM.selectAllBtn.addEventListener('click', handleSelectAll);
-        DOM.downloadBtn.addEventListener('click', executeDownload);
-
-        fetchGamesList();
+        searchInput.addEventListener('input', (e) => renderList(e.target.value));
+        
+        init();
     </script>
 </body>
 </html>
